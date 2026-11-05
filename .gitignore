@@ -1,25 +1,40 @@
-# OS
-Thumbs.db
-.DS_Store
+# Secrets and local data - 이 저장소는 공개 저장소다.
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+data/private/
 
-# Python
+# Dependencies
+node_modules/
 __pycache__/
 *.py[cod]
 .venv/
 venv/
 
-# Node
-node_modules/
+# Build output
 dist/
 build/
+out/
+coverage/
+.gradle/
+*.class
 
-# IDE
+# Logs
+*.log
+
+# Local DB
+*.sqlite
+*.sqlite3
+*.db
+
+# IDE / OS
+.vscode/*
+!.vscode/extensions.json
 .idea/
-.vscode/
+.DS_Store
+Thumbs.db
 
-# Secrets and local data
-.env
-*.key
-*.pem
-data/private/
-
+# Local tool config
+.claude/
