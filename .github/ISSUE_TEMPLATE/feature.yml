@@ -1,0 +1,31 @@
+name: 기능
+description: 새 기능이나 개선을 제안합니다.
+title: "[기능] "
+labels: ["enhancement"]
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: 영역
+      options:
+        - frontend
+        - backend
+        - webhook
+        - infra
+        - 기타
+    validations:
+      required: true
+  - type: textarea
+    id: goal
+    attributes:
+      label: 하려는 것
+      description: 무엇을, 왜 하려는지 작성합니다.
+    validations:
+      required: true
+  - type: textarea
+    id: done
+    attributes:
+      label: 완료 조건
+      placeholder: |
+        - [ ] 저장소를 등록하면 수집 대상 목록에 표시된다
+        - [ ] 잘못된 저장소 주소는 오류 메시지를 표시한다

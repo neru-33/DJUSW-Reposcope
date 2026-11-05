@@ -1,0 +1,19 @@
+# 줄바꿈을 LF로 통일한다. (Windows·macOS 혼용 대비)
+* text=auto eol=lf
+
+# Windows 전용 실행 파일 (Gradle Wrapper의 gradlew.bat 등)
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff2 binary
+*.jar binary
+*.pdf binary
+*.pptx binary
+*.docx binary
+*.xlsx binary
+*.zip binary
