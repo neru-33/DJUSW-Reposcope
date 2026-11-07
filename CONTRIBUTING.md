@@ -5,7 +5,10 @@
 ```text
 DJUSW-Reposcope/
 ├─ frontend/     React 웹 화면
-├─ backend/      Spring Boot API·워커
+├─ backend/
+│  ├─ api/        Spring Boot API
+│  ├─ worker/     수집 worker
+│  └─ migrations/ 수집·계정 테이블 마이그레이션
 ├─ webhook/      GitHub Webhook 수신 Lambda
 ├─ infra/        AWS 구성·배포 설정
 ├─ docs/         계획서, 주간 기록, 회의록, OSS 라이선스 검토

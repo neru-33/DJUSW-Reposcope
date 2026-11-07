@@ -31,6 +31,7 @@ GitHub App Webhook → API Gateway → Lambda → S3 원본 + SQS(+DLQ) → work
 | `frontend/` | React 화면 |
 | `backend/api/` | Spring API |
 | `backend/worker/` | 수집 worker |
+| `backend/migrations/` | 수집·계정 테이블 마이그레이션 |
 | `webhook/` | Webhook 수신 Lambda |
 | `infra/` | Terraform, 배포 설정 |
 
