@@ -21,7 +21,7 @@
 |---|---|---|---|
 | 프런트엔드 | `frontend` | React 화면 | `frontend/` |
 | 백엔드 | `backend` | Spring API, 인증, 프로젝트 기능 | `backend/api/` |
-| 수집 | `backend`, `webhook` | worker, 수신 Lambda | `backend/worker/`, `webhook/` |
+| 수집 | `backend`, `webhook` | worker, 수신 Lambda | `backend/worker/`, `backend/migrations/`, `webhook/` |
 | 인프라 | `infra` | AWS, 컨테이너, CI/CD | `infra/` |
 
 ## 3. 진행 원칙
