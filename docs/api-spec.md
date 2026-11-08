@@ -71,7 +71,7 @@
 | 메서드 | 경로 | 권한 | 응답 |
 |---|---|---|---|
 | GET | `/api/health` | 없음 | `200 {"status":"ok"}` |
-| GET | `/api/version` | 없음 | `200 {"version":"v0.1.0"}` |
+| GET | `/api/version` | 없음 | `200 {"version":"v0.1.0"}` (`APP_VERSION` 값, 미설정 시 `unknown`) |
 
 ## 3. 학생 인증 (R-1)
 
