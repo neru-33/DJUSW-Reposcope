@@ -33,7 +33,7 @@ GitHub App Webhook → API Gateway → Lambda → S3 원본 + SQS(+DLQ) → work
 | `backend/worker/` | 수집 worker |
 | `backend/migrations/` | 수집·계정 테이블 마이그레이션 |
 | `webhook/` | Webhook 수신 Lambda |
-| `infra/` | Terraform, 배포 설정 |
+| `infra/` | Terraform, 배포 설정, 로컬 실행 환경 |
 
 ## 규칙
 
