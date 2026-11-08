@@ -15,8 +15,8 @@ export class ApiError extends Error {
   readonly code: string
   readonly fields?: Record<string, string>
 
-  constructor(status: number, body: ApiErrorBody) {
-    super(body.message ?? body.error)
+  constructor(status: number, body: ApiErrorBody, options?: ErrorOptions) {
+    super(body.message ?? body.error, options)
     this.name = 'ApiError'
     this.status = status
     this.code = body.error
@@ -65,9 +65,14 @@ function toErrorBody(data: unknown, status: number): ApiErrorBody {
   }
 }
 
+function isAbortError(error: unknown): boolean {
+  return error instanceof Error && error.name === 'AbortError'
+}
+
 /**
  * API를 호출한다. 쿠키를 함께 보내고, 쓰기 요청에는 CSRF 토큰을 붙인다.
- * 실패 응답은 ApiError로 던진다.
+ * 실패 응답과 연결 실패는 ApiError로 던진다. 연결 실패는 status 0, code `network_error`이다.
+ * 요청을 중단해 생긴 AbortError는 그대로 던진다.
  */
 export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const method = (options.method ?? 'GET').toUpperCase()
@@ -75,13 +80,23 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
   if (options.body !== undefined) headers.set('Content-Type', 'application/json')
   if (CSRF_METHODS.has(method) && csrfToken) headers.set('X-CSRF-Token', csrfToken)
 
-  const response = await fetch(buildUrl(path, options.query), {
-    method,
-    headers,
-    credentials: 'include',
-    body: options.body === undefined ? undefined : JSON.stringify(options.body),
-    signal: options.signal,
-  })
+  let response: Response
+  try {
+    response = await fetch(buildUrl(path, options.query), {
+      method,
+      headers,
+      credentials: 'include',
+      body: options.body === undefined ? undefined : JSON.stringify(options.body),
+      signal: options.signal,
+    })
+  } catch (error) {
+    if (isAbortError(error)) throw error
+    throw new ApiError(
+      0,
+      { error: 'network_error', message: '서버에 연결하지 못했습니다. 네트워크 상태를 확인하세요.' },
+      { cause: error },
+    )
+  }
 
   if (response.status === 204) return undefined as T
 
@@ -97,9 +112,17 @@ export const api = {
   delete: <T>(path: string) => request<T>(path, { method: 'DELETE' }),
 }
 
-/** 현재 사용자를 조회하고, 응답의 CSRF 토큰을 이후 쓰기 요청에 쓴다. */
+/**
+ * 현재 사용자를 조회하고, 응답의 CSRF 토큰을 이후 쓰기 요청에 쓴다.
+ * 로그인하지 않았으면(401) 가지고 있던 토큰을 지운다.
+ */
 export async function fetchMe(): Promise<Me> {
-  const me = await request<Me>('/api/me')
-  setCsrfToken(me.csrf_token)
-  return me
+  try {
+    const me = await request<Me>('/api/me')
+    setCsrfToken(me.csrf_token)
+    return me
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401) setCsrfToken(null)
+    throw error
+  }
 }

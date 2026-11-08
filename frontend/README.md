@@ -4,7 +4,7 @@ React와 TypeScript로 작성한 RepoScope 웹 화면이다. Vite로 실행하�
 
 ## 실행
 
-Node.js 22 이상이 필요하다.
+Node.js 22.12 이상이 필요하다.
 
 ```bash
 npm install

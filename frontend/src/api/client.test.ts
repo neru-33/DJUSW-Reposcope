@@ -89,6 +89,25 @@ describe('request', () => {
 
     await expect(api.get('/api/me')).rejects.toMatchObject({ status: 502, code: 'internal_error' })
   })
+
+  it('연결 실패를 network_error로 바꾼다', async () => {
+    const cause = new TypeError('Failed to fetch')
+    fetchMock.mockRejectedValueOnce(cause)
+
+    const error = await api.get('/api/health').catch((e: unknown) => e)
+
+    expect(error).toBeInstanceOf(ApiError)
+    expect(error).toMatchObject({ status: 0, code: 'network_error', cause })
+  })
+
+  it('요청 중단은 ApiError로 바꾸지 않는다', async () => {
+    fetchMock.mockRejectedValueOnce(new DOMException('aborted', 'AbortError'))
+
+    const error = await api.get('/api/health').catch((e: unknown) => e)
+
+    expect(error).not.toBeInstanceOf(ApiError)
+    expect(error).toMatchObject({ name: 'AbortError' })
+  })
 })
 
 describe('fetchMe', () => {
@@ -109,5 +128,17 @@ describe('fetchMe', () => {
     await api.post('/auth/logout')
 
     expect(lastCall().headers.get('X-CSRF-Token')).toBe('token-from-me')
+  })
+
+  it('401이면 가지고 있던 CSRF 토큰을 지운다', async () => {
+    setCsrfToken('old-token')
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse({ error: 'unauthorized', message: '로그인이 필요합니다.' }, 401))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+
+    await expect(fetchMe()).rejects.toMatchObject({ status: 401, code: 'unauthorized' })
+    await api.post('/auth/logout')
+
+    expect(lastCall().headers.has('X-CSRF-Token')).toBe(false)
   })
 })
