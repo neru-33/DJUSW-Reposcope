@@ -19,11 +19,11 @@ PostgreSQL 연결을 위해 다음 환경 변수를 실행 환경에 설정한�
 
 ## Docker 실행
 
-`backend/api/`에서 실행한다.
+루트의 `.env.example`을 `.env`로 복사하고 DB 접속 정보를 설정한 뒤 `backend/api/`에서 실행한다. Docker 컨테이너에서 `localhost`는 API 컨테이너 자신을 가리키므로, Docker Desktop의 호스트에서 실행 중인 PostgreSQL에 연결하려면 `DB_HOST=host.docker.internal`로 설정한다.
 
 ```bash
 docker build -t reposcope-api .
-docker run --rm -p 8081:8080 --name reposcope-api-test reposcope-api
+docker run --rm -p 8081:8080 --env-file ../../.env --name reposcope-api-test reposcope-api
 ```
 
 다른 터미널에서 `curl -i http://localhost:8081/api/health`와 `curl -i http://localhost:8081/api/version`으로 확인한다. 종료하려면 실행 중인 터미널에서 Ctrl+C를 누른다.
