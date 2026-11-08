@@ -20,11 +20,12 @@ until aws s3api list-buckets >/dev/null 2>&1; do
 done
 
 BUCKET="$PREFIX-raw-events"
-aws s3api head-bucket --bucket "$BUCKET" 2>/dev/null ||
+aws s3api head-bucket --bucket "$BUCKET" >/dev/null 2>&1 ||
   aws s3api create-bucket --bucket "$BUCKET" \
     --create-bucket-configuration LocationConstraint="$REGION" >/dev/null
 
 DLQ_URL="$(aws sqs create-queue --queue-name "$PREFIX-events-dlq" \
+  --attributes MessageRetentionPeriod=1209600 \
   --query QueueUrl --output text)"
 DLQ_ARN="$(aws sqs get-queue-attributes --queue-url "$DLQ_URL" \
   --attribute-names QueueArn --query Attributes.QueueArn --output text)"

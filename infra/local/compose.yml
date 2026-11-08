@@ -53,14 +53,14 @@ services:
   # S3, SQS, SSM을 흉내 내는 AWS 에뮬레이터. 메모리에만 저장하므로 재시작하면 비워진다.
   moto:
     profiles: ["ingest"]
-    image: motoserver/moto:latest
+    image: motoserver/moto:5.2.5
     ports:
       - "127.0.0.1:4566:5000"
 
   # moto가 뜬 뒤 S3 버킷, SQS 큐(DLQ 포함), SSM 파라미터를 만든다. 여러 번 실행해도 안전하다.
   moto-init:
     profiles: ["ingest"]
-    image: amazon/aws-cli:latest
+    image: amazon/aws-cli:2.39.6
     depends_on:
       - moto
     environment:
