@@ -1,0 +1,9 @@
+:root {
+  font-family: system-ui, -apple-system, 'Segoe UI', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+  line-height: 1.6;
+}
+
+body {
+  margin: 0;
+  padding: 24px;
+}
