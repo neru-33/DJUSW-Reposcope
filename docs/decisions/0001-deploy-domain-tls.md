@@ -45,7 +45,7 @@
 
 - ACM 인증서는 Terraform(`aws_acm_certificate`)으로 만들고, 확인용 CNAME 값은 output으로 꺼낸다.
 - Let's Encrypt 계정 연락처 이메일은 배포 설정의 환경 변수로 넣고 저장소에는 적지 않는다.
-- Let's Encrypt는 만료 알림 메일을 보내지 않는다. 갱신 실패는 이메일이 아닌 다른 방법으로 확인해야 한다(8절).
+- Let's Encrypt는 만료 알림 메일을 보내지 않는다. 갱신 실패는 이메일이 아닌 다른 방법으로 확인해야 한다(7절).
 
 **대안**
 
@@ -92,21 +92,12 @@
 - 세션 쿠키는 `api` 호스트 전용이고 `Secure`, `HttpOnly`, `SameSite=Lax`다. `www`와 `api`는 같은 사이트라 `Lax`로도 쿠키가 실린다.
 - CSRF는 공통 인증(#23)의 `X-CSRF-Token` 헤더 방식을 그대로 쓴다.
 
-## 6. EC2 역할은 worker 컨테이너만 쓴다
-
-**배경**: EC2에는 IAM 역할이 하나뿐이고, 컨테이너가 이 역할을 받을 수 있게 IMDS hop limit을 2로 둔다. 이대로면 EC2의 모든 컨테이너가 GitHub App 키 읽기, SQS 메시지 삭제, 원본 이벤트 읽기 권한을 갖는다.
-
-**결정**
-
-- api 컨테이너와 Caddy 컨테이너는 IMDS(`169.254.169.254`) 접근을 막는다. 연계 프로젝트의 결정 0002와 같은 방식이다.
-- api에 필요한 비밀값(DB 비밀번호, GitHub Client secret)은 배포 스크립트가 Parameter Store에서 읽어 환경 변수로 넣는다.
-
-## 7. 영향 범위
+## 6. 영향 범위
 
 | 대상 | 바꿀 내용 |
 |---|---|
-| Terraform 기본 자원 (#19) | CloudFront 대역 80 규칙과 `allow_cloudfront_origin` 변수 삭제, EC2 설정 주석에 IMDS 차단 요건 기록 |
-| 배포 작업 (T-49) | 보안 그룹 443·80 추가, Caddy와 Let's Encrypt 인증서, IMDS 차단, CloudFront와 웹 버킷, ACM 인증서 |
+| Terraform 기본 자원 (#19) | CloudFront 대역 80 규칙과 `allow_cloudfront_origin` 변수 삭제 |
+| 배포 작업 (T-49) | 보안 그룹 443·80 추가, Caddy와 Let's Encrypt 인증서, CloudFront와 웹 버킷, ACM 인증서 |
 | 백엔드 API | CORS 허용 출처를 환경 변수로 받기, 운영에서 세션 쿠키 `Secure` 켜기, 로그인 후 `www`로 이동 |
 | 프런트엔드 | API 주소를 환경 변수로 받기, 요청에 쿠키 포함(`credentials: 'include'`) |
 | GitHub App | Callback URL을 `https://api.reposcope.example/auth/github/callback`으로 설정 |
@@ -114,7 +105,7 @@
 
 Webhook 수신 경로(GitHub → API Gateway → Lambda)는 이 결정의 영향을 받지 않는다.
 
-## 8. 정해지지 않은 것
+## 7. 정해지지 않은 것
 
 - [ ] 실제 도메인 이름 (Cloudflare에서 구매)
 - [ ] Let's Encrypt 계정 연락처로 쓸 팀 공용 이메일
