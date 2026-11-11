@@ -9,8 +9,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.authentication.AuthenticationTrustResolverImpl;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.csrf.CsrfException;
 import org.springframework.security.web.csrf.HttpSessionCsrfTokenRepository;
@@ -19,7 +17,7 @@ import tools.jackson.databind.ObjectMapper;
 @Configuration
 public class SecurityConfig {
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http, ObjectMapper mapper) throws Exception {
+    SecurityFilterChain securityFilterChain(HttpSecurity http, ObjectMapper mapper, CurrentUserService users) throws Exception {
         var csrfTokens = new HttpSessionCsrfTokenRepository();
         csrfTokens.setHeaderName("X-CSRF-Token");
         http.authorizeHttpRequests(authorize -> authorize
@@ -28,6 +26,7 @@ public class SecurityConfig {
                         "/auth/github/login", "/auth/github/callback").permitAll()
                 .requestMatchers(HttpMethod.POST, "/auth/admin/login").permitAll()
                 .anyRequest().authenticated())
+            .logout(logout -> logout.disable())
             .csrf(csrf -> csrf.csrfTokenRepository(csrfTokens)
                     .csrfTokenRequestHandler(new HeaderCsrfTokenRequestHandler()).ignoringRequestMatchers(
                     org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher
@@ -37,10 +36,7 @@ public class SecurityConfig {
                         writeError(response, mapper, 401, "unauthorized", "로그인이 필요합니다."))
                 .accessDeniedHandler((request, response, exception) -> {
                     if (exception instanceof CsrfException) {
-                        var authentication = SecurityContextHolder.getContext().getAuthentication();
-                        var trustResolver = new AuthenticationTrustResolverImpl();
-                        if (authentication == null || !authentication.isAuthenticated()
-                                || trustResolver.isAnonymous(authentication)) {
+                        if (!users.isLoggedIn()) {
                             writeError(response, mapper, 401, "unauthorized", "로그인이 필요합니다.");
                         } else {
                             writeError(response, mapper, 403, "csrf", "CSRF 토큰을 확인하세요.");

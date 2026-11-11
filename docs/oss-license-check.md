@@ -3,7 +3,7 @@
 | OSS명 | 버전 | 출처 | 라이선스 | 사용 목적 | 공개 가능 여부 |
 |---|---|---|---|---|---|
 | Spring Boot | 4.1.2 | [Spring Boot](https://github.com/spring-projects/spring-boot/tree/v4.1.2) | [Apache-2.0](https://github.com/spring-projects/spring-boot/blob/v4.1.2/LICENSE.txt) | API 서버 및 Web/JDBC 구성 | 라이선스·고지 조건 검토 후 공개 |
-| Spring Security | 7.1.2 | [Spring Security](https://github.com/spring-projects/spring-security) | [Apache-2.0](https://www.apache.org/licenses/LICENSE-2.0) | API 인증·권한 및 CSRF 검사 | 라이선스·고지 조건 검토 후 공개 |
+| Spring Security | 7.1.2 | [Spring Security](https://github.com/spring-projects/spring-security/tree/7.1.2) | [Apache-2.0](https://github.com/spring-projects/spring-security/blob/7.1.2/LICENSE.txt) | API 인증·권한 및 CSRF 검사 | 라이선스·고지 조건 검토 후 공개 |
 | PostgreSQL JDBC Driver | 42.7.14 | [pgJDBC](https://github.com/pgjdbc/pgjdbc/tree/REL42.7.14) | [BSD-2-Clause](https://github.com/pgjdbc/pgjdbc/blob/REL42.7.14/LICENSE) | PostgreSQL 연결 | 라이선스·고지 조건 검토 후 공개 |
 | Gradle | 9.8.2 | [Gradle](https://gradle.org/) | [Apache-2.0](https://docs.gradle.org/current/userguide/licenses.html) | 빌드 및 Gradle Wrapper | 라이선스·고지 조건 검토 후 공개 |
 | Eclipse Temurin | 21 (컨테이너 이미지 태그) | [Adoptium Containers](https://github.com/adoptium/containers) | [Temurin 라이선스 정보](https://projects.eclipse.org/projects/adoptium.temurin) | Java 빌드 및 실행 환경 | 이미지 구성 요소와 배포 조건 추가 검토 필요 |

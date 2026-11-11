@@ -4,6 +4,8 @@ Java 21과 PostgreSQL을 사용한다. 환경 변수를 설정한 뒤 `./gradlew
 
 `/api/version`은 `APP_VERSION` 환경 변수 값을 반환한다. 배포 시 이미지 태그와 같은 값으로 설정하며, 지정하지 않으면 `unknown`을 반환한다.
 
+세션 쿠키의 `Secure` 속성은 `SESSION_COOKIE_SECURE` 환경 변수로 설정한다. 기본값은 `false`이며 HTTPS 배포 환경에서는 `true`로 설정한다.
+
 PostgreSQL 연결을 위해 다음 환경 변수를 실행 환경에 설정한다.
 
 | 변수 | 설명 | 예시 |
