@@ -1,0 +1,7 @@
+# 복사해서 terraform.tfvars로 쓴다(terraform.tfvars는 git에 올라가지 않는다).
+alert_email = "team-alerts@example.com"
+
+# 필요하면 바꾼다.
+# raw_bucket_name    = "reposcope-raw-events"
+# monthly_budget_usd = 5
+# instance_type      = "t3.small"

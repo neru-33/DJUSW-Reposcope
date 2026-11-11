@@ -19,3 +19,24 @@ output "db_address" {
 output "db_name" {
   value = module.data.db_name
 }
+
+output "webhook_url" {
+  description = "GitHub App의 Webhook URL에 입력할 값"
+  value       = module.ingest.webhook_url
+}
+
+output "queue_url" {
+  value = module.ingest.queue_url
+}
+
+output "raw_bucket_name" {
+  value = module.ingest.raw_bucket_name
+}
+
+output "app_public_ip" {
+  value = module.app.public_ip
+}
+
+output "app_instance_id" {
+  value = module.app.instance_id
+}

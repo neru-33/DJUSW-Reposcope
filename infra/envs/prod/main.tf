@@ -22,3 +22,43 @@ module "data" {
   db_password         = var.db_password
   deletion_protection = var.rds_deletion_protection
 }
+
+module "ingest" {
+  source = "../../modules/ingest"
+
+  name_prefix               = var.name_prefix
+  raw_bucket_name           = var.raw_bucket_name
+  force_destroy             = var.raw_force_destroy
+  webhook_secret_param_name = module.secrets.names["webhook-secret"]
+  webhook_secret_param_arn  = module.secrets.arns["webhook-secret"]
+  alert_email               = var.alert_email
+  lambda_source_dir         = "${path.root}/../../../webhook"
+  lambda_zip_path           = "${path.root}/.build/ingest.zip"
+}
+
+module "app" {
+  source = "../../modules/app"
+
+  name_prefix              = var.name_prefix
+  region                   = var.region
+  instance_type            = var.instance_type
+  subnet_id                = module.network.public_subnet_id
+  security_group_id        = module.network.app_security_group_id
+  raw_bucket_name          = module.ingest.raw_bucket_name
+  queue_arn                = module.ingest.queue_arn
+  dlq_arn                  = module.ingest.dlq_arn
+  webhook_secret_param_arn = module.secrets.arns["webhook-secret"]
+  secret_param_arns = [
+    module.secrets.arns["github-app-key"],
+    module.secrets.arns["github-client-secret"],
+    module.secrets.arns["db-password"],
+  ]
+}
+
+module "cost" {
+  source = "../../modules/cost"
+
+  name_prefix        = var.name_prefix
+  alert_emails       = [var.alert_email]
+  monthly_budget_usd = var.monthly_budget_usd
+}
