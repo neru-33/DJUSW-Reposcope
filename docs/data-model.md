@@ -167,6 +167,8 @@ erDiagram
 
 ## 5. 수집 영역
 
+수집·계정 마이그레이션은 연계 프로젝트(2026URP) 계약을 그대로 따르므로 `teams`, `team_members`, `projects`, `programs`, `audit_logs` 테이블과 `installations.team_id`, `repos.project_id`, `repos.program_id` 컬럼도 만든다. 계약 유지용이며 사용하지 않는다.
+
 ### `installations`
 
 GitHub App 설치를 저장한다.
