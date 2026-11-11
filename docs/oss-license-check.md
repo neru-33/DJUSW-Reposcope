@@ -17,6 +17,8 @@
 | TypeScript | 7.0.2 | [npm](https://www.npmjs.com/package/typescript/v/7.0.2) | Apache-2.0 | 타입 검사 | 개발 도구. 빌드 결과에 포함되지 않음 |
 | Vitest | 5.1.0 | [npm](https://www.npmjs.com/package/vitest/v/5.1.0) | MIT | 테스트 | 개발 도구. 빌드 결과에 포함되지 않음 |
 | oxlint | 1.92.0 | [npm](https://www.npmjs.com/package/oxlint/v/1.92.0) | MIT | 코드 검사 | 개발 도구. 빌드 결과에 포함되지 않음 |
+| actions/checkout, actions/setup-java, actions/setup-node | checkout v7, setup-java v6, setup-node v7 | [actions](https://github.com/actions) | MIT | CI 소스 내려받기와 실행 환경 준비 | CI 도구. 저장소 결과물에 포함되지 않음 |
+| gradle/actions (setup-gradle) | v6 | [gradle/actions](https://github.com/gradle/actions) | MIT(기본 캐시 `cache-provider: basic`만 사용) | CI의 Gradle 설정과 캐시 | CI 도구. 독점 구성 요소인 Enhanced Caching은 사용하지 않음 |
 
 - 위 항목은 직접 사용한 주요 구성 요소다. 간접 의존성, 테스트 의존성과 컨테이너 이미지에 포함된 구성 요소의 라이선스·고지 사항은 배포 전에 추가 확인한다.
 - Spring Boot가 관리하는 PostgreSQL JDBC 드라이버와 Flyway 버전은 Gradle `runtimeClasspath`에서 확인했다. 버전 변경 시 다시 확인한다.
