@@ -99,7 +99,7 @@
 | Terraform 기본 자원 (#19) | CloudFront 대역 80 규칙과 `allow_cloudfront_origin` 변수 삭제 |
 | 배포 작업 (T-49) | 보안 그룹 443·80 추가, Caddy와 Let's Encrypt 인증서, CloudFront와 웹 버킷, ACM 인증서 |
 | 백엔드 API | CORS 허용 출처를 환경 변수로 받기, 운영에서 세션 쿠키 `Secure` 켜기, 로그인 후 `www`로 이동 |
-| 프런트엔드 | API 주소를 환경 변수로 받기, 요청에 쿠키 포함(`credentials: 'include'`) |
+| 프런트엔드 | 배포 빌드에서 `VITE_API_BASE_URL`을 `https://api.reposcope.example`로 설정. API 주소 환경 변수와 쿠키 포함 요청(`credentials: 'include'`)은 이미 구현되어 있다 |
 | GitHub App | Callback URL을 `https://api.reposcope.example/auth/github/callback`으로 설정 |
 | 문서 | `docs/github-app.md`의 Callback URL, `infra/README.md`의 DNS와 인증서 절차 |
 
