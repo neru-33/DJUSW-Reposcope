@@ -13,7 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-@SpringBootTest
+@SpringBootTest(properties = "spring.flyway.enabled=true")
 @Transactional
 @EnabledIfEnvironmentVariable(named = "DB_CONNECTION_TEST", matches = "true")
 class MigrationTests {

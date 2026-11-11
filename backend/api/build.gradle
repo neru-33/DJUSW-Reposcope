@@ -33,4 +33,5 @@ bootJar {
 
 tasks.named('test') {
 	useJUnitPlatform()
+	environment 'FLYWAY_ENABLED', 'false'
 }
