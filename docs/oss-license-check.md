@@ -9,6 +9,9 @@
 | moto | 5.2.5 (컨테이너 이미지 태그) | [moto](https://github.com/getmoto/moto) | [Apache-2.0](https://github.com/getmoto/moto/blob/master/LICENSE) | 로컬 실행 환경의 AWS(S3, SQS, SSM) 에뮬레이션 | 라이선스·고지 조건 검토 후 공개 |
 | PostgreSQL | 17 (`postgres:17-alpine` 이미지, 확인 시점 17.11) | [PostgreSQL](https://www.postgresql.org/), [Docker 이미지](https://github.com/docker-library/postgres) | [PostgreSQL License](https://www.postgresql.org/about/licence/), 이미지 구성 파일 [MIT](https://github.com/docker-library/postgres/blob/master/LICENSE) | 로컬 실행 환경의 데이터베이스 | 이미지 구성 요소와 배포 조건 추가 검토 필요 |
 | AWS CLI v2 | 2.39.6 (컨테이너 이미지 태그) | [aws-cli](https://github.com/aws/aws-cli/tree/v2) | [Apache-2.0](https://github.com/aws/aws-cli/blob/v2/LICENSE.txt) | 로컬 실행 환경의 moto 초기화 스크립트 실행 | 라이선스·고지 조건 검토 후 공개 |
+| Terraform | 1.17.0 | [Terraform](https://github.com/hashicorp/terraform) | [BUSL-1.1](https://github.com/hashicorp/terraform/blob/main/LICENSE) | AWS 자원 정의와 생성 | 개발 도구. 저장소에 포함하지 않으며 사용 조건 검토 필요 |
+| Terraform AWS Provider | 6.72.0 | [terraform-provider-aws](https://github.com/hashicorp/terraform-provider-aws/tree/v6.72.0) | [MPL-2.0](https://github.com/hashicorp/terraform-provider-aws/blob/v6.72.0/LICENSE) | AWS 자원 관리 | 개발 도구. 저장소에 포함하지 않음 |
+| Terraform Archive Provider | 2.8.1 | [terraform-provider-archive](https://github.com/hashicorp/terraform-provider-archive/tree/v2.8.1) | [MPL-2.0](https://github.com/hashicorp/terraform-provider-archive/blob/v2.8.1/LICENSE) | Lambda 코드 압축 | 개발 도구. 저장소에 포함하지 않음 |
 | React, React DOM | 19.3.1 | [npm](https://www.npmjs.com/package/react/v/19.3.1) | MIT | 웹 화면 구성 | 공개 가능. 배포 시 라이선스 고지 유지 |
 | React Router | 7.18.5 | [npm](https://www.npmjs.com/package/react-router/v/7.18.5) | MIT | 화면 주소 라우팅 | 공개 가능. 배포 시 라이선스 고지 유지 |
 | Vite | 8.3.6 | [npm](https://www.npmjs.com/package/vite/v/8.3.6) | MIT | 개발 서버, 빌드 | 개발 도구. 빌드 결과에 포함되지 않음 |
