@@ -6,7 +6,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-@SpringBootTest(properties = {"APP_VERSION=test-image-tag", "DB_USER=test", "DB_PASSWORD=test"})
+@SpringBootTest(properties = {"APP_VERSION=test-image-tag", "DB_USER=test", "DB_PASSWORD=test",
+		"spring.flyway.enabled=false"})
 class ApiApplicationTests {
 
 	@Autowired

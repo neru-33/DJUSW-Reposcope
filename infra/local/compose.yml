@@ -46,6 +46,7 @@ services:
       DB_USER: ${DB_USER:-reposcope}
       DB_PASSWORD: ${DB_PASSWORD:?.env에 DB_PASSWORD를 설정한다}
       DB_SSLMODE: disable
+      CAPSTONE_SCHEMA: ${CAPSTONE_SCHEMA:-capstone}
       APP_VERSION: ${APP_VERSION:-local}
     ports:
       - "127.0.0.1:8080:8080"
