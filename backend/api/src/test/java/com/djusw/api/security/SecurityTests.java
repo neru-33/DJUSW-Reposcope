@@ -13,6 +13,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.web.servlet.MockMvc;
@@ -210,8 +211,88 @@ class SecurityTests {
                 .andExpect(status().isOk());
     }
 
+    @Test
+    void roleCheckAcceptsAnyListedRole() throws Exception {
+        mvc.perform(get("/api/test/managers").with(authentication(user(CurrentUser.Role.SUPER_ADMIN))))
+                .andExpect(status().isOk());
+        mvc.perform(get("/api/test/managers").with(authentication(user(CurrentUser.Role.ADMIN))))
+                .andExpect(status().isOk());
+        mvc.perform(get("/api/test/managers").with(authentication(user(CurrentUser.Role.PROFESSOR))))
+                .andExpect(status().isForbidden()).andExpect(jsonPath("$.error").value("forbidden"));
+    }
+
+    @Test
+    void guestReceivesProfileRequiredFromRoleCheck() throws Exception {
+        mvc.perform(get("/api/test/admin").with(authentication(user(CurrentUser.Role.GUEST))))
+                .andExpect(status().isForbidden()).andExpect(jsonPath("$.error").value("profile_required"));
+    }
+
+    @Test
+    void principalOtherThanCurrentUserIsNotLoggedIn() throws Exception {
+        mvc.perform(get("/api/test/me").with(authentication(otherPrincipal())))
+                .andExpect(status().isUnauthorized()).andExpect(jsonPath("$.error").value("unauthorized"));
+    }
+
+    @Test
+    void githubLoginPathsArePublic() throws Exception {
+        for (String path : List.of("/auth/github/login", "/auth/github/callback")) {
+            mvc.perform(get(path))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error").value("not_found"));
+        }
+    }
+
+    @Test
+    void earlierMaskedTokenRemainsValidInSameSession() throws Exception {
+        var first = mvc.perform(get("/api/test/csrf").with(authentication(user(CurrentUser.Role.STUDENT))))
+                .andExpect(status().isOk()).andReturn();
+        var session = (MockHttpSession) first.getRequest().getSession(false);
+        String earlier = first.getResponse().getContentAsString();
+        String later = mvc.perform(get("/api/test/csrf").session(session)
+                        .with(authentication(user(CurrentUser.Role.STUDENT))))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        org.junit.jupiter.api.Assertions.assertNotEquals(earlier, later);
+
+        for (String token : List.of(earlier, later)) {
+            mvc.perform(post("/api/test/write").session(session)
+                            .with(authentication(user(CurrentUser.Role.STUDENT))).header("X-CSRF-Token", token))
+                    .andExpect(status().isOk());
+        }
+    }
+
+    @Test
+    void apiErrorKeepsStatusWhenBrowserAsksForHtml() throws Exception {
+        mvc.perform(get("/api/test/profile").with(authentication(user(CurrentUser.Role.GUEST))).accept("text/html"))
+                .andExpect(status().isForbidden())
+                .andExpect(content().contentTypeCompatibleWith("application/json"))
+                .andExpect(jsonPath("$.error").value("profile_required"));
+    }
+
+    @Test
+    void defaultLogoutEndpointDoesNotRedirectToMissingLoginPage() throws Exception {
+        mvc.perform(post("/logout").with(authentication(user(CurrentUser.Role.STUDENT))).with(csrf().asHeader()))
+                .andExpect(status().is4xxClientError())
+                .andExpect(header().doesNotExist("Location"));
+    }
+
+    @Test
+    void generatedInMemoryUserIsNotCreated() {
+        org.junit.jupiter.api.Assertions.assertEquals(0,
+                context.getBeanNamesForType(InMemoryUserDetailsManager.class).length);
+    }
+
+    @Test
+    void csrfFailureUsesSameLoginDecisionAsCurrentUserService() throws Exception {
+        mvc.perform(post("/api/test/write").with(authentication(otherPrincipal())))
+                .andExpect(status().isUnauthorized()).andExpect(jsonPath("$.error").value("unauthorized"));
+    }
+
     private UsernamePasswordAuthenticationToken user(CurrentUser.Role role) {
         return UsernamePasswordAuthenticationToken.authenticated(new CurrentUser(7, role), null, List.of());
+    }
+
+    private UsernamePasswordAuthenticationToken otherPrincipal() {
+        return UsernamePasswordAuthenticationToken.authenticated("github-user", null, List.of());
     }
 
     @TestConfiguration
@@ -230,6 +311,9 @@ class SecurityTests {
         @GetMapping("/api/test/me") long me() { return users.requireCurrentUser().id(); }
         @GetMapping("/api/test/profile") void profile() { users.requireCompletedProfile(); }
         @GetMapping("/api/test/admin") void admin() { users.requireRole(CurrentUser.Role.ADMIN); }
+        @GetMapping("/api/test/managers") void managers() {
+            users.requireRole(CurrentUser.Role.SUPER_ADMIN, CurrentUser.Role.ADMIN);
+        }
         @GetMapping("/api/test/csrf") String token(HttpServletRequest request) { return csrf.tokenFor(request); }
         @PostMapping("/auth/admin/login") String login(HttpServletRequest request) { return csrf.tokenFor(request); }
         @PostMapping("/api/test/write") void postWrite() {}

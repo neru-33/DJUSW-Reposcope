@@ -3,6 +3,9 @@ package com.djusw.api.error;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -16,6 +19,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+@ExtendWith(OutputCaptureExtension.class)
 class ApiExceptionHandlerTests {
     private MockMvc mvc;
 
@@ -56,6 +60,14 @@ class ApiExceptionHandlerTests {
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.error").value("internal_error"))
                 .andExpect(jsonPath("$.message").value("서버 오류가 발생했습니다."));
+    }
+
+    @Test
+    void unexpectedErrorsAreLoggedWithStackTrace(CapturedOutput output) throws Exception {
+        mvc.perform(get("/test/failure")).andExpect(status().isInternalServerError());
+        org.junit.jupiter.api.Assertions.assertTrue(
+                output.getAll().contains("ApiExceptionHandlerTests$TestController.failure"),
+                "500 응답을 만든 예외의 스택 트레이스가 로그에 있어야 한다");
     }
 
     @RestController
