@@ -167,6 +167,8 @@ erDiagram
 
 ## 5. 수집 영역
 
+수집·계정 마이그레이션은 연계 프로젝트(2026URP) 계약을 그대로 따르므로 `teams`, `team_members`, `projects`, `programs`, `audit_logs` 테이블과 `installations.team_id`, `repos.project_id`, `repos.program_id` 컬럼도 만든다. 계약 유지용이며 사용하지 않는다.
+
 ### `installations`
 
 GitHub App 설치를 저장한다.
@@ -340,4 +342,5 @@ date_trunc('week', a.occurred_at AT TIME ZONE 'Asia/Seoul')
 
 - `capstone` 스키마는 Spring API가 Flyway로 적용한다. 파일은 `backend/api/src/main/resources/db/migration/`에 둔다.
 - 수집·계정 영역은 `backend/migrations/`의 SQL을 worker가 시작할 때 적용한다.
+- 스키마 이름은 capstone 영역은 `CAPSTONE_SCHEMA`(기본 `capstone`), 수집·계정 영역은 `INGEST_SCHEMA`(기본 `public`)로 받는다.
 - 두 영역의 이력은 따로 관리한다. 한 PR에서 두 영역을 함께 바꾸면 수집 영역을 먼저 적용한다.
