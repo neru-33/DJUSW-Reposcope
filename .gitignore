@@ -36,5 +36,17 @@ coverage/
 .DS_Store
 Thumbs.db
 
+# Terraform: state, 실행 계획, 변수 파일, 내려받은 프로바이더, 빌드 산출물
+# (.terraform.lock.hcl은 프로바이더 버전을 고정하므로 커밋한다)
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+tfplan
+terraform.tfvars
+*.auto.tfvars
+crash.log
+infra/envs/*/.build/
+
 # Local tool config
 .claude/
