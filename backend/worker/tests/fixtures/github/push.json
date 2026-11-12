@@ -1,0 +1,105 @@
+{
+  "ref": "refs/heads/main",
+  "before": "1111111111111111111111111111111111111111",
+  "after": "a2c4e6a8b0d2f4a6c8e0b2d4f6a8c0e2b4d6f8a0",
+  "repository": {
+    "id": 30000001,
+    "node_id": "R_kgDOEXAMPLE1",
+    "name": "team-project",
+    "full_name": "example-student/team-project",
+    "private": false,
+    "owner": {
+      "name": "example-student",
+      "email": "20000001+example-student@users.noreply.github.com",
+      "login": "example-student",
+      "id": 20000001,
+      "type": "User"
+    },
+    "html_url": "https://github.com/example-student/team-project",
+    "default_branch": "main",
+    "pushed_at": 1793588400
+  },
+  "pusher": {
+    "name": "example-student",
+    "email": "example-student@example.com"
+  },
+  "sender": {
+    "login": "example-student",
+    "id": 20000001,
+    "type": "User"
+  },
+  "installation": {
+    "id": 10000001,
+    "node_id": "MDIzOkludGVncmF0aW9uSW5zdGFsbGF0aW9uMTAwMDAwMDE="
+  },
+  "created": false,
+  "deleted": false,
+  "forced": false,
+  "base_ref": null,
+  "compare": "https://github.com/example-student/team-project/compare/111111111111...a2c4e6a8b0d2",
+  "commits": [
+    {
+      "id": "f1e2d3c4b5a6f7e8d9c0b1a2f3e4d5c6b7a8f9e0",
+      "tree_id": "0000000000000000000000000000000000000001",
+      "distinct": true,
+      "message": "로그인 화면 추가\n\n- 폼 검증\n- 오류 메시지 표시",
+      "timestamp": "2026-11-03T10:00:00+09:00",
+      "url": "https://github.com/example-student/team-project/commit/f1e2d3c4b5a6f7e8d9c0b1a2f3e4d5c6b7a8f9e0",
+      "author": {
+        "name": "Example Student",
+        "email": "example-student@example.com",
+        "username": "example-student"
+      },
+      "committer": {
+        "name": "Example Student",
+        "email": "example-student@example.com",
+        "username": "example-student"
+      },
+      "added": ["src/login.js"],
+      "removed": [],
+      "modified": ["README.md"]
+    },
+    {
+      "id": "a2c4e6a8b0d2f4a6c8e0b2d4f6a8c0e2b4d6f8a0",
+      "tree_id": "0000000000000000000000000000000000000002",
+      "distinct": true,
+      "message": "Fix typo in README",
+      "timestamp": "2026-11-03T10:05:00+09:00",
+      "url": "https://github.com/example-student/team-project/commit/a2c4e6a8b0d2f4a6c8e0b2d4f6a8c0e2b4d6f8a0",
+      "author": {
+        "name": "Example Teammate",
+        "email": "20000002+example-teammate@users.noreply.github.com",
+        "username": "example-teammate"
+      },
+      "committer": {
+        "name": "GitHub",
+        "email": "noreply@github.com",
+        "username": "web-flow"
+      },
+      "added": [],
+      "removed": [],
+      "modified": ["README.md"]
+    }
+  ],
+  "head_commit": {
+    "id": "a2c4e6a8b0d2f4a6c8e0b2d4f6a8c0e2b4d6f8a0",
+    "tree_id": "0000000000000000000000000000000000000002",
+    "distinct": true,
+    "message": "Fix typo in README",
+    "timestamp": "2026-11-03T10:05:00+09:00",
+    "url": "https://github.com/example-student/team-project/commit/a2c4e6a8b0d2f4a6c8e0b2d4f6a8c0e2b4d6f8a0",
+    "author": {
+      "name": "Example Teammate",
+      "email": "20000002+example-teammate@users.noreply.github.com",
+      "username": "example-teammate"
+    },
+    "committer": {
+      "name": "GitHub",
+      "email": "noreply@github.com",
+      "username": "web-flow"
+    },
+    "added": [],
+    "removed": [],
+    "modified": ["README.md"]
+  }
+}

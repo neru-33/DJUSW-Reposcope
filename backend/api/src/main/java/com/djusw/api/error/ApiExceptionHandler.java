@@ -1,0 +1,43 @@
+package com.djusw.api.error;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+@RestControllerAdvice
+public class ApiExceptionHandler {
+    private static final Logger log = LoggerFactory.getLogger(ApiExceptionHandler.class);
+
+    @ExceptionHandler(ApiException.class)
+    ResponseEntity<ApiErrorResponse> handleApiException(ApiException exception) {
+        return ResponseEntity.status(exception.status()).contentType(MediaType.APPLICATION_JSON).body(
+                new ApiErrorResponse(exception.error(), exception.getMessage(), exception.fields()));
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    ResponseEntity<ApiErrorResponse> handleInvalidBody(HttpMessageNotReadableException exception) {
+        return ResponseEntity.badRequest().contentType(MediaType.APPLICATION_JSON)
+                .body(new ApiErrorResponse("invalid_request", "요청 본문을 확인하세요."));
+    }
+
+    @ExceptionHandler(Exception.class)
+    ResponseEntity<ApiErrorResponse> handleUnexpected(Exception exception) throws Exception {
+        if (exception instanceof org.springframework.security.core.AuthenticationException
+                || exception instanceof org.springframework.security.access.AccessDeniedException) {
+            throw exception;
+        }
+        if (exception instanceof org.springframework.web.ErrorResponse error) {
+            return ResponseEntity.status(error.getStatusCode()).headers(error.getHeaders())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(FrameworkErrors.forStatus(error.getStatusCode().value()));
+        }
+        log.error("처리하지 못한 예외", exception);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).contentType(MediaType.APPLICATION_JSON)
+                .body(new ApiErrorResponse("internal_error", "서버 오류가 발생했습니다."));
+    }
+}
