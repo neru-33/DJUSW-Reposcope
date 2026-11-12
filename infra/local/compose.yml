@@ -1,7 +1,7 @@
 # 로컬 실행 환경.
 #
 #   기본 구성: postgres, api
-#   수집 구성: 기본 구성 + moto(S3, SQS, SSM) + moto-init   (--profile ingest)
+#   수집 구성: 기본 구성 + moto(S3, SQS, SSM) + moto-init + worker   (--profile ingest)
 #
 # 저장소 루트에서 실행한다. 사용법은 infra/local/README.md.
 #   docker compose --env-file .env -f infra/local/compose.yml up -d
@@ -71,6 +71,35 @@ services:
     entrypoint: ["/bin/sh", "/init/init-aws.sh"]
     volumes:
       - ./init-aws.sh:/init/init-aws.sh:ro
+
+  # SQS 메시지를 읽어 S3 원본을 가져오고 수집 테이블에 저장한다. 시작할 때 backend/migrations를 적용한다.
+  # App 키 파일을 마운트하지 않으면 GitHub 연동만 꺼지고 정상 동작한다.
+  worker:
+    profiles: ["ingest"]
+    build:
+      context: ../..
+      dockerfile: backend/worker/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+      moto-init:
+        condition: service_completed_successfully
+    environment:
+      <<: *aws-local
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: ${DB_NAME:-reposcope}
+      DB_USER: ${DB_USER:-reposcope}
+      DB_PASSWORD: ${DB_PASSWORD:?.env에 DB_PASSWORD를 설정한다}
+      DB_SSLMODE: disable
+      INGEST_SCHEMA: ${INGEST_SCHEMA:-public}
+      CAPSTONE_SCHEMA: ${CAPSTONE_SCHEMA:-capstone}
+      QUEUE_URL: http://moto:5000/123456789012/reposcope-events
+      RAW_BUCKET: reposcope-raw-events
+      GITHUB_APP_ID: ${GITHUB_APP_ID:-}
+      GITHUB_APP_PRIVATE_KEY_FILE: /run/secrets/github-app-key
+      APP_VERSION: ${APP_VERSION:-local}
+    restart: unless-stopped
 
 volumes:
   pgdata:

@@ -1,0 +1,25 @@
+# 저장소 루트를 빌드 컨텍스트로 쓰는 이미지용 (backend/worker/Dockerfile)
+# 폴더를 컨텍스트로 쓰는 빌드(backend/api 등)에는 적용되지 않는다.
+.git
+.github
+.env
+.env.*
+!.env.example
+**/*.pem
+**/__pycache__
+**/.pytest_cache
+**/.venv
+**/node_modules
+**/.gradle
+**/build
+**/.terraform
+**/*.tfstate*
+**/*.tfvars
+frontend
+backend/api
+webhook
+infra
+docs
+data
+assets
+reports

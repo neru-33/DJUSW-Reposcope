@@ -5,9 +5,9 @@
 | 구성 | 서비스 | 사용자 |
 |---|---|---|
 | 기본 | postgres, api | 모든 팀원 |
-| 수집 | 기본 구성 + moto, moto-init | 수집, 인프라 담당 |
+| 수집 | 기본 구성 + moto, moto-init, worker | 수집, 인프라 담당 |
 
-moto는 S3, SQS, SSM Parameter Store를 흉내 내는 오픈소스 AWS 에뮬레이터다. 화면, 수신 함수, worker는 각 작업에서 이 compose 파일에 서비스로 추가한다.
+moto는 S3, SQS, SSM Parameter Store를 흉내 내는 오픈소스 AWS 에뮬레이터다. worker는 수집 구성에 들어 있다([worker 안내](../../backend/worker/README.md)). 화면과 수신 함수는 각 작업에서 이 compose 파일에 서비스로 추가한다.
 
 ## 필요한 것
 
@@ -43,6 +43,7 @@ docker compose --env-file .env -f infra/local/compose.yml --profile ingest up -d
 | DB 준비 | `docker compose --env-file .env -f infra/local/compose.yml ps` | postgres가 `healthy` |
 | moto 초기화(수집) | `docker compose --env-file .env -f infra/local/compose.yml --profile ingest logs moto-init` | `로컬 AWS 준비 완료` |
 | 큐 목록(수집) | `docker compose --env-file .env -f infra/local/compose.yml --profile ingest run --rm --no-deps --entrypoint aws moto-init sqs list-queues` | `reposcope-events`, `reposcope-events-dlq` |
+| worker 시작(수집) | `docker compose --env-file .env -f infra/local/compose.yml --profile ingest logs worker` | `worker_started` |
 
 ## 접속 주소
 
@@ -71,7 +72,7 @@ AWS SDK를 쓰는 코드는 `AWS_ENDPOINT_URL` 환경 변수가 있으면 moto�
 |---|---|
 | 종료 (DB 데이터 유지) | `docker compose --env-file .env -f infra/local/compose.yml --profile ingest down` |
 | 종료 후 DB 데이터 삭제 | 위 명령에 `-v`를 붙인다 |
-| 코드를 바꾼 뒤 API 다시 빌드 | `up -d --build`를 다시 실행한다 |
+| 코드를 바꾼 뒤 API·worker 다시 빌드 | `up -d --build`를 다시 실행한다 |
 
 ## 운영과 다른 점
 

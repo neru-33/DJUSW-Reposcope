@@ -1,0 +1,65 @@
+{
+  "action": "closed",
+  "issue": {
+    "url": "https://api.github.com/repos/example-student/team-project/issues/12",
+    "id": 50000012,
+    "node_id": "I_kwDOEXAMPLE12",
+    "number": 12,
+    "html_url": "https://github.com/example-student/team-project/issues/12",
+    "title": "회원가입 시 이메일 중복 확인",
+    "user": {
+      "login": "example-student",
+      "id": 20000001,
+      "type": "User"
+    },
+    "labels": [
+      {
+        "id": 1,
+        "name": "enhancement",
+        "color": "a2eeef"
+      }
+    ],
+    "state": "closed",
+    "state_reason": "completed",
+    "locked": false,
+    "assignee": {
+      "login": "example-teammate",
+      "id": 20000002,
+      "type": "User"
+    },
+    "assignees": [
+      {
+        "login": "example-teammate",
+        "id": 20000002,
+        "type": "User"
+      }
+    ],
+    "comments": 0,
+    "created_at": "2026-11-03T02:00:00Z",
+    "updated_at": "2026-11-03T04:00:00Z",
+    "closed_at": "2026-11-03T04:00:00Z",
+    "body": "가입 폼에서 이메일 중복을 미리 확인해야 합니다."
+  },
+  "repository": {
+    "id": 30000001,
+    "node_id": "R_kgDOEXAMPLE1",
+    "name": "team-project",
+    "full_name": "example-student/team-project",
+    "private": false,
+    "owner": {
+      "login": "example-student",
+      "id": 20000001,
+      "type": "User"
+    },
+    "html_url": "https://github.com/example-student/team-project"
+  },
+  "installation": {
+    "id": 10000001,
+    "node_id": "MDIzOkludGVncmF0aW9uSW5zdGFsbGF0aW9uMTAwMDAwMDE="
+  },
+  "sender": {
+    "login": "example-teammate",
+    "id": 20000002,
+    "type": "User"
+  }
+}

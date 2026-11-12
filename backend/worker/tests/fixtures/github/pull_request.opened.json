@@ -1,0 +1,102 @@
+{
+  "action": "opened",
+  "number": 7,
+  "pull_request": {
+    "url": "https://api.github.com/repos/example-student/team-project/pulls/7",
+    "id": 40000007,
+    "node_id": "PR_kwDOEXAMPLE7",
+    "number": 7,
+    "html_url": "https://github.com/example-student/team-project/pull/7",
+    "state": "open",
+    "locked": false,
+    "title": "로그인 화면 추가",
+    "user": {
+      "login": "example-teammate",
+      "id": 20000002,
+      "type": "User"
+    },
+    "body": "로그인 폼과 검증 로직을 추가했습니다.\n\n연락: example-teammate@example.com",
+    "created_at": "2026-11-03T01:10:00Z",
+    "updated_at": "2026-11-03T01:10:00Z",
+    "closed_at": null,
+    "merged_at": null,
+    "merge_commit_sha": null,
+    "draft": false,
+    "head": {
+      "label": "example-student:feature/login",
+      "ref": "feature/login",
+      "sha": "f1e2d3c4b5a6f7e8d9c0b1a2f3e4d5c6b7a8f9e0",
+      "user": {
+        "login": "example-student",
+        "id": 20000001,
+        "type": "User"
+      },
+      "repo": {
+        "id": 30000001,
+        "node_id": "R_kgDOEXAMPLE1",
+        "name": "team-project",
+        "full_name": "example-student/team-project",
+        "private": false,
+        "owner": {
+          "login": "example-student",
+          "id": 20000001,
+          "type": "User"
+        },
+        "html_url": "https://github.com/example-student/team-project"
+      }
+    },
+    "base": {
+      "label": "example-student:main",
+      "ref": "main",
+      "sha": "1111111111111111111111111111111111111111",
+      "user": {
+        "login": "example-student",
+        "id": 20000001,
+        "type": "User"
+      },
+      "repo": {
+        "id": 30000001,
+        "node_id": "R_kgDOEXAMPLE1",
+        "name": "team-project",
+        "full_name": "example-student/team-project",
+        "private": false,
+        "owner": {
+          "login": "example-student",
+          "id": 20000001,
+          "type": "User"
+        },
+        "html_url": "https://github.com/example-student/team-project"
+      }
+    },
+    "merged": false,
+    "merged_by": null,
+    "comments": 1,
+    "review_comments": 0,
+    "commits": 2,
+    "additions": 120,
+    "deletions": 4,
+    "changed_files": 3
+  },
+  "repository": {
+    "id": 30000001,
+    "node_id": "R_kgDOEXAMPLE1",
+    "name": "team-project",
+    "full_name": "example-student/team-project",
+    "private": false,
+    "owner": {
+      "login": "example-student",
+      "id": 20000001,
+      "type": "User"
+    },
+    "html_url": "https://github.com/example-student/team-project"
+  },
+  "installation": {
+    "id": 10000001,
+    "node_id": "MDIzOkludGVncmF0aW9uSW5zdGFsbGF0aW9uMTAwMDAwMDE="
+  },
+  "sender": {
+    "login": "example-teammate",
+    "id": 20000002,
+    "type": "User"
+  }
+}

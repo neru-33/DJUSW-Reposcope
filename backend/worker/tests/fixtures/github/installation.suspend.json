@@ -1,0 +1,66 @@
+{
+  "action": "suspend",
+  "installation": {
+    "id": 10000001,
+    "client_id": "Iv23liEXAMPLE",
+    "account": {
+      "login": "example-student",
+      "id": 20000001,
+      "node_id": "U_kgDOAAAAAA",
+      "type": "User",
+      "site_admin": false
+    },
+    "repository_selection": "selected",
+    "access_tokens_url": "https://api.github.com/app/installations/10000001/access_tokens",
+    "repositories_url": "https://api.github.com/installation/repositories",
+    "html_url": "https://github.com/settings/installations/10000001",
+    "app_id": 1000001,
+    "app_slug": "student-github-dashboard",
+    "target_id": 20000001,
+    "target_type": "User",
+    "permissions": {
+      "contents": "read",
+      "issues": "read",
+      "metadata": "read",
+      "pull_requests": "read"
+    },
+    "events": [
+      "issues",
+      "pull_request",
+      "push"
+    ],
+    "created_at": "2026-11-02T12:00:00.000+09:00",
+    "updated_at": "2026-11-02T12:00:00.000+09:00",
+    "single_file_name": null,
+    "has_multiple_single_files": false,
+    "single_file_paths": [],
+    "suspended_by": {
+      "login": "example-student",
+      "id": 20000001,
+      "type": "User"
+    },
+    "suspended_at": "2026-11-03T12:00:00.000+09:00"
+  },
+  "repositories": [
+    {
+      "id": 30000001,
+      "node_id": "R_kgDOEXAMPLE1",
+      "name": "team-project",
+      "full_name": "example-student/team-project",
+      "private": false
+    },
+    {
+      "id": 30000003,
+      "node_id": "R_kgDOEXAMPLE3",
+      "name": "new-repo",
+      "full_name": "example-student/new-repo",
+      "private": false
+    }
+  ],
+  "requester": null,
+  "sender": {
+    "login": "example-student",
+    "id": 20000001,
+    "type": "User"
+  }
+}
