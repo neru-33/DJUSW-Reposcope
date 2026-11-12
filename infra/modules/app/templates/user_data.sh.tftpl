@@ -1,0 +1,35 @@
+#!/bin/bash
+# EC2 최초 부팅 1회: Docker와 Compose 설치, 스왑 설정만 한다.
+# 로그: /var/log/reposcope-bootstrap.log
+set -euo pipefail
+exec > >(tee -a /var/log/reposcope-bootstrap.log) 2>&1
+echo "bootstrap start $(date -Is)"
+
+# EIP가 연결되기 전에는 인터넷이 안 될 수 있다(자동 퍼블릭 IP 없음). 최대 10분 기다린다.
+for i in $(seq 1 60); do
+  if curl -fsS -m 5 -o /dev/null https://github.com; then break; fi
+  echo "waiting for internet ($i)"; sleep 10
+done
+
+dnf install -y docker iptables-nft
+
+mkdir -p /usr/local/lib/docker/cli-plugins
+curl -fsSL "https://github.com/docker/compose/releases/download/${compose_version}/docker-compose-linux-x86_64" \
+  -o /usr/local/lib/docker/cli-plugins/docker-compose
+chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+
+# 컨테이너 로그는 로컬 파일에 두고 크기를 제한한다(CloudWatch Logs 요금 방지)
+mkdir -p /etc/docker
+cat > /etc/docker/daemon.json <<'JSON'
+{ "log-driver": "json-file", "log-opts": { "max-size": "10m", "max-file": "3" } }
+JSON
+systemctl enable --now docker
+
+# 메모리 2GB에서 JVM 2개가 뜰 수 있어 스왑 1GB를 만든다(루트 볼륨 안이라 추가 EBS 없음)
+if [ ! -f /swapfile ]; then
+  dd if=/dev/zero of=/swapfile bs=1M count=1024
+  chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile
+  echo '/swapfile swap swap defaults 0 0' >> /etc/fstab
+fi
+
+echo "bootstrap done $(date -Is)"

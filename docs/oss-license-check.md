@@ -11,6 +11,9 @@
 | moto | 5.2.5 (컨테이너 이미지 태그) | [moto](https://github.com/getmoto/moto) | [Apache-2.0](https://github.com/getmoto/moto/blob/master/LICENSE) | 로컬 실행 환경의 AWS(S3, SQS, SSM) 에뮬레이션 | 라이선스·고지 조건 검토 후 공개 |
 | PostgreSQL | 17 (`postgres:17-alpine` 이미지, 확인 시점 17.11) | [PostgreSQL](https://www.postgresql.org/), [Docker 이미지](https://github.com/docker-library/postgres) | [PostgreSQL License](https://www.postgresql.org/about/licence/), 이미지 구성 파일 [MIT](https://github.com/docker-library/postgres/blob/master/LICENSE) | 로컬 실행 환경의 데이터베이스 | 이미지 구성 요소와 배포 조건 추가 검토 필요 |
 | AWS CLI v2 | 2.39.6 (컨테이너 이미지 태그) | [aws-cli](https://github.com/aws/aws-cli/tree/v2) | [Apache-2.0](https://github.com/aws/aws-cli/blob/v2/LICENSE.txt) | 로컬 실행 환경의 moto 초기화 스크립트 실행 | 라이선스·고지 조건 검토 후 공개 |
+| Terraform | 1.17.0 | [Terraform](https://github.com/hashicorp/terraform) | [BUSL-1.1](https://github.com/hashicorp/terraform/blob/main/LICENSE) | AWS 자원 정의와 생성 | 개발 도구. 저장소에 포함하지 않으며 사용 조건 검토 필요 |
+| Terraform AWS Provider | 6.72.0 | [terraform-provider-aws](https://github.com/hashicorp/terraform-provider-aws/tree/v6.72.0) | [MPL-2.0](https://github.com/hashicorp/terraform-provider-aws/blob/v6.72.0/LICENSE) | AWS 자원 관리 | 개발 도구. 저장소에 포함하지 않음 |
+| Terraform Archive Provider | 2.8.1 | [terraform-provider-archive](https://github.com/hashicorp/terraform-provider-archive/tree/v2.8.1) | [MPL-2.0](https://github.com/hashicorp/terraform-provider-archive/blob/v2.8.1/LICENSE) | Lambda 코드 압축 | 개발 도구. 저장소에 포함하지 않음 |
 | boto3 | 1.43.123 | [PyPI](https://pypi.org/project/boto3/1.43.123/) | Apache-2.0 | worker의 SQS, S3 접근 | 라이선스·고지 조건 검토 후 공개 |
 | psycopg (`psycopg[binary]`) | 3.3.7 | [PyPI](https://pypi.org/project/psycopg/3.3.7/) | LGPL-3.0 (binary 패키지에 libpq 포함) | worker의 PostgreSQL 연결 | 수정 없이 라이브러리로만 사용. 배포 시 고지 조건 추가 검토 필요 |
 | PyJWT (`PyJWT[crypto]`) | 2.15.1 | [PyPI](https://pypi.org/project/PyJWT/2.15.1/) | MIT | worker의 GitHub App JWT 서명 | 공개 가능. 배포 시 라이선스 고지 유지 |
