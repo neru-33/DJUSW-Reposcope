@@ -45,10 +45,10 @@ data "aws_iam_policy_document" "ingest" {
     resources = [var.webhook_secret_param_arn]
   }
 
-  # 날짜 접두사(YYYY-MM-DD/) 아래에만 쓸 수 있게 해서 deploy/ 번들은 덮어쓰지 못하게 한다.
+  # 원본 이벤트 키는 날짜 접두사(YYYY-MM-DD/) 아래에만 쓸 수 있다.
   statement {
     sid       = "WriteRawEvents"
-    actions   = ["s3:PutObject", "s3:PutObjectTagging"]
+    actions   = ["s3:PutObject"]
     resources = ["${aws_s3_bucket.raw.arn}/20??-??-??/*"]
   }
 

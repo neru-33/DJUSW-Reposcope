@@ -9,7 +9,7 @@ variable "alert_emails" {
 }
 
 variable "monthly_budget_usd" {
-  description = "월 예산 상한(USD). 이상 징후를 일찍 알아채기 위한 값이다"
+  description = "월 예산 상한(USD). 크레딧을 빼지 않은 사용량 기준이며, 예상 월 비용(약 43달러)보다 조금 높게 잡는다"
   type        = number
-  default     = 5
+  default     = 50
 }

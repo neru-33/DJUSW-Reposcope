@@ -38,7 +38,7 @@ AWS 자원은 Terraform으로만 만들고 바꾼다. `terraform apply`는 infra
    ```
 
 3. `terraform.tfvars.example`을 `terraform.tfvars`로 복사해 `alert_email`을 채운다.
-4. RDS 비밀번호를 환경 변수로 넘긴다. Parameter Store의 `/reposcope/db-password`에 넣을 값과 같아야 하며 16자 이상이다.
+4. RDS 비밀번호를 환경 변수로 넘긴다. Parameter Store의 `/reposcope/db-password`에 넣을 값과 같아야 하며 16자 이상이다. `plan`, `apply`, `destroy`를 실행할 때마다 필요하므로, 새 터미널에서는 다시 설정한다.
 
    ```powershell
    $env:TF_VAR_db_password = "<16자 이상 비밀번호>"
@@ -51,10 +51,23 @@ AWS 자원은 Terraform으로만 만들고 바꾼다. `terraform apply`는 infra
    aws ssm put-parameter --name /reposcope/<이름> --type SecureString --overwrite --value "<값>"
    ```
 
+   GitHub App의 Private key(PEM)는 여러 줄이라 `--value "<값>"`로 넣을 수 없다. 파일로 넣는다.
+
+   ```bash
+   aws ssm put-parameter --name /reposcope/github-app-key --type SecureString --overwrite --value file://<pem 경로>
+   ```
+
 7. 알림 이메일로 도착한 SNS 구독 확인 메일의 `Confirm subscription`을 누른다.
 8. `terraform output webhook_url` 값을 GitHub App의 Webhook URL에 넣는다([GitHub App 설정](../docs/github-app.md)).
 
-수신 Lambda 코드는 `webhook/`에 있다. 코드가 들어오기 전에 apply하면 빈 함수가 만들어진다.
+수신 Lambda 코드는 `webhook/`에 있다. 수신 코드가 들어오기 전에 apply하면 `webhook/README.md`만 담긴, 실행할 수 없는 함수가 만들어진다.
+
+### 컨테이너와 EC2 역할
+
+EC2 역할에는 GitHub App 키를 읽는 권한이 있다. 인스턴스 메타데이터의 hop limit이 2여서 EC2 위의 컨테이너는 이 역할의 자격 증명을 받을 수 있다. 이 설정은 worker 컨테이너용이다.
+
+- api와 Caddy 컨테이너는 배포 설정에서 IMDS 접근을 막는다.
+- api가 쓰는 비밀값(DB 비밀번호, GitHub Client secret)은 컨테이너가 직접 읽지 않는다. 배포 스크립트가 Parameter Store에서 읽어 환경 변수로 넘긴다.
 
 ### 종료할 때
 
@@ -70,12 +83,12 @@ state 버킷(`bootstrap/`)은 삭제 방지가 걸려 있어 함께 지워지지
 
 | 항목 | 월 비용(USD) |
 |---|---|
-| EC2 t3.small | 약 15 |
+| EC2 t3.small | 약 19 |
 | RDS db.t4g.micro | 약 19 |
 | RDS 저장소 gp3 20GB | 약 3 |
 | EC2 루트 볼륨 gp3 20GB | 약 2 |
 | 고정 IP(퍼블릭 IPv4) | 약 4 |
 | S3, SQS, Lambda, API Gateway, Parameter Store, SNS, 예산 | 1 미만(트래픽이 적을 때) |
-| **합계** | **약 43(약 6만 원)** |
+| **합계** | **약 47(약 6.6만 원)** |
 
 프리 티어 적용 여부는 계정의 요금제에 따라 다르므로 apply 전에 콘솔의 Billing에서 확인한다.

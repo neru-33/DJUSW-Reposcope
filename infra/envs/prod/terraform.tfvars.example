@@ -3,5 +3,5 @@ alert_email = "team-alerts@example.com"
 
 # 필요하면 바꾼다.
 # raw_bucket_name    = "reposcope-raw-events"
-# monthly_budget_usd = 5
+# monthly_budget_usd = 50
 # instance_type      = "t3.small"

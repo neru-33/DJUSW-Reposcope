@@ -42,9 +42,9 @@ variable "alert_email" {
 }
 
 variable "monthly_budget_usd" {
-  description = "월 예산 상한(USD)"
+  description = "월 예산 상한(USD). 크레딧을 빼지 않은 사용량 기준이다"
   type        = number
-  default     = 5
+  default     = 50
 }
 
 variable "instance_type" {

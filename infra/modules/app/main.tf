@@ -21,7 +21,9 @@ resource "aws_instance" "app" {
     cpu_credits = "standard"
   }
 
-  # IMDSv2만 허용한다. hop limit 2는 컨테이너가 역할 자격 증명을 받을 수 있게 한다.
+  # IMDSv2만 허용한다. hop limit 2는 worker 컨테이너가 EC2 역할의 자격 증명을 받을 수 있게 한다.
+  # 이 역할에는 GitHub App 키를 읽는 권한이 있으므로 api와 Caddy 컨테이너는 받으면 안 된다.
+  # 두 컨테이너의 IMDS 접근은 배포 설정에서 막는다.
   metadata_options {
     http_endpoint               = "enabled"
     http_tokens                 = "required"

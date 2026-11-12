@@ -1,14 +1,9 @@
-# 예산 2개(둘 다 무료 범위): 0.01달러만 넘어도 알리는 Zero-spend 예산과 월 예산.
+# 예산 2개(둘 다 무료 범위). 두 예산은 크레딧을 다르게 계산해 역할을 나눈다.
 #
-# include_credit = false: 크레딧이 비용을 상쇄하면 순비용이 0으로 보이므로,
-# 크레딧을 빼고 계산해야 크레딧이 소모되기 시작하는 순간에 알림이 온다.
-
-locals {
-  cost_types = {
-    include_credit = false
-    include_refund = false
-  }
-}
+# monthly: include_credit = false. 크레딧을 빼지 않은 사용량으로 계산한다.
+#   크레딧이 있어도 사용량이 예산을 넘으면 알려서, 크레딧이 예상보다 빨리 줄어드는 것을 알 수 있다.
+# zero_spend: include_credit = true. 크레딧을 뺀 실제 청구액으로 계산한다.
+#   크레딧이 떨어지거나 크레딧으로 처리되지 않는 요금이 생겨 돈이 나갈 때만 알린다.
 
 resource "aws_budgets_budget" "zero_spend" {
   name         = "${var.name_prefix}-zero-spend"
@@ -18,8 +13,8 @@ resource "aws_budgets_budget" "zero_spend" {
   time_unit    = "MONTHLY"
 
   cost_types {
-    include_credit = local.cost_types.include_credit
-    include_refund = local.cost_types.include_refund
+    include_credit = true
+    include_refund = false
   }
 
   notification {
@@ -39,8 +34,8 @@ resource "aws_budgets_budget" "monthly" {
   time_unit    = "MONTHLY"
 
   cost_types {
-    include_credit = local.cost_types.include_credit
-    include_refund = local.cost_types.include_refund
+    include_credit = false
+    include_refund = false
   }
 
   notification {
