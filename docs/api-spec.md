@@ -54,6 +54,7 @@
 | 403 | `profile_required` | 가입을 끝내지 않음 |
 | 403 | `csrf` | CSRF 토큰이 없거나 틀림 |
 | 404 | `not_found` | 대상 없음 |
+| 405, 415 | `invalid_request` | 지원하지 않는 메서드 또는 미디어 타입 |
 | 409 | `duplicate_student_id` | 이미 쓰는 학번 |
 | 409 | `project_archived` | 보관한 프로젝트라 수정할 수 없음 |
 | 409 | `already_member` | 이미 참여 중 |

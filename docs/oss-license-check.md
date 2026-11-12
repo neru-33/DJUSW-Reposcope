@@ -3,6 +3,7 @@
 | OSS명 | 버전 | 출처 | 라이선스 | 사용 목적 | 공개 가능 여부 |
 |---|---|---|---|---|---|
 | Spring Boot | 4.1.2 | [Spring Boot](https://github.com/spring-projects/spring-boot/tree/v4.1.2) | [Apache-2.0](https://github.com/spring-projects/spring-boot/blob/v4.1.2/LICENSE.txt) | API 서버 및 Web/JDBC 구성 | 라이선스·고지 조건 검토 후 공개 |
+| Spring Security | 7.1.2 | [Spring Security](https://github.com/spring-projects/spring-security/tree/7.1.2) | [Apache-2.0](https://github.com/spring-projects/spring-security/blob/7.1.2/LICENSE.txt) | API 인증·권한 및 CSRF 검사 | 라이선스·고지 조건 검토 후 공개 |
 | PostgreSQL JDBC Driver | 42.7.14 | [pgJDBC](https://github.com/pgjdbc/pgjdbc/tree/REL42.7.14) | [BSD-2-Clause](https://github.com/pgjdbc/pgjdbc/blob/REL42.7.14/LICENSE) | PostgreSQL 연결 | 라이선스·고지 조건 검토 후 공개 |
 | Flyway (flyway-core, flyway-database-postgresql) | 12.4.0 | [Flyway](https://github.com/flyway/flyway/tree/flyway-12.4.0) | [Apache-2.0](https://github.com/flyway/flyway/blob/flyway-12.4.0/LICENSE.txt) | capstone 스키마 마이그레이션 적용 | 라이선스·고지 조건 검토 후 공개 |
 | Gradle | 9.8.2 | [Gradle](https://gradle.org/) | [Apache-2.0](https://docs.gradle.org/current/userguide/licenses.html) | 빌드 및 Gradle Wrapper | 라이선스·고지 조건 검토 후 공개 |
