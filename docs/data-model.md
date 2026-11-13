@@ -51,10 +51,12 @@ erDiagram
 |---|---|---|---|
 | `id` | `bigserial` | PK | |
 | `name` | `text` | NOT NULL, 1~100자 | 이름 |
+| `team_name` | `text` | 50자 이하 | 팀 이름 |
 | `description` | `text` | 500자 이하 | 설명 |
 | `starts_on` | `date` | | 시작일 |
 | `ends_on` | `date` | `starts_on` 이후 | 종료일 |
 | `status` | `text` | NOT NULL, 기본값 `PLANNING` | 진행 상태 |
+| `visibility` | `text` | NOT NULL, 기본값 `TEAM` | 공개 범위. `TEAM`(팀원에게만), `STUDENTS`(학생 모두) |
 | `program_id` | `bigint` | | 학기 분류 값 |
 | `archived_at` | `timestamptz` | | 보관 시각. `NULL`이면 사용 중 |
 | `created_by` | `bigint` | NOT NULL | 등록자 `users.id` 값 |
@@ -149,8 +151,10 @@ erDiagram
 | `linked_by` | `bigint` | NOT NULL | 연결한 `users.id` 값 |
 | `linked_at` | `timestamptz` | NOT NULL | |
 | `unlinked_at` | `timestamptz` | | 연결 해제 시각 |
+| `is_primary` | `boolean` | NOT NULL, 기본값 `false` | 대표 저장소 여부 |
 
 - 저장소별로 `unlinked_at`이 `NULL`인 행은 하나만 허용한다. 부분 유니크 인덱스로 보장한다.
+- 프로젝트별로 `is_primary`가 `true`이고 `unlinked_at`이 `NULL`인 행은 하나만 허용한다.
 - 연결 해제된 저장소의 활동은 `unlinked_at` 이전까지만 프로젝트에 표시한다.
 
 ### `audit_logs`
@@ -315,6 +319,8 @@ IP별 로그인 실패를 저장한다. (R-2)
 | `project_members` | `(user_id)` | 내 프로젝트 목록 |
 | `project_invites` | `(project_id)` 부분 유니크, `revoked_at IS NULL` | 유효 코드 하나 보장 |
 | `project_repos` | `(github_repo_id)` 부분 유니크, `unlinked_at IS NULL` | 저장소 중복 연결 방지 |
+| `project_repos` | `(project_id)` 부분 유니크, `is_primary AND unlinked_at IS NULL` | 대표 저장소 하나 보장 |
+| `projects` | `(visibility)` 부분 인덱스, `archived_at IS NULL` | 둘러보기 목록 |
 | `project_status_history` | `(project_id, changed_at)` | 상태 이력 |
 | `deliverables` | `(project_id)` | 결과물 목록 |
 

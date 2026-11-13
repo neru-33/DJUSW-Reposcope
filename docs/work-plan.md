@@ -86,8 +86,8 @@ flowchart LR
 | T-23 | 리뷰와 병합 시각 수집 | `backend`, `webhook` | S-1, S-2 | T-11 |
 | T-24 | 운영자 로그인 API | `backend` | R-2 | T-04, T-13 |
 | T-25 | 운영자 로그인, 초기 설정 화면 | `frontend` | R-2, V-13, V-14 | T-08 |
-| T-30 | 프로젝트 API | `backend` | R-3 | T-20 |
-| T-31 | 프로젝트 목록, 등록, 개요, 설정 화면 | `frontend` | R-3, V-3, V-4, V-6, V-12 | T-08 |
+| T-30 | 프로젝트 API, 공개 범위와 공개 프로젝트 목록 | `backend` | R-3 | T-20 |
+| T-31 | 내 프로젝트, 둘러보기, 등록, 개요, 설정 화면 | `frontend` | R-3, V-3, V-4, V-6, V-12, V-19 | T-08 |
 | T-32 | 팀원과 초대 코드 API | `backend` | R-4 | T-30 |
 | T-33 | 초대 코드 입력, 팀원 화면 | `frontend` | R-4, V-5, V-9 | T-08 |
 | T-34 | 진행 상태 API와 화면 | `backend`, `frontend` | R-5, V-6 | T-30, T-31 |
@@ -98,12 +98,12 @@ flowchart LR
 
 | 번호 | 작업 | 라벨 | 기능 | 선행 |
 |---|---|---|---|---|
-| T-40 | 저장소 연결 API | `backend` | R-7 | T-30, T-22 |
+| T-40 | 저장소 연결 API, 대표 저장소, README 조회 | `backend` | R-3, R-7 | T-30, T-22 |
 | T-41 | 저장소 화면 | `frontend` | R-7, V-11 | T-08 |
 | T-42 | 활동 API | `backend` | R-8 | T-40, T-23 |
-| T-43 | 활동 화면 | `frontend` | R-8, V-7 | T-08 |
-| T-44 | 통계 API | `backend` | R-9 | T-42 |
-| T-45 | 통계 화면 | `frontend` | R-9, V-6, V-8 | T-08 |
+| T-43 | 최근 활동, 전체 활동 화면 | `frontend` | R-8, V-7, V-8 | T-08 |
+| T-44 | 통계 API, 목록 카드의 주간 활동 수 | `backend` | R-9 | T-42 |
+| T-45 | 활동 탭의 통계, 목록 카드의 주간 활동 표시 | `frontend` | R-9, V-3, V-7, V-19 | T-08 |
 | T-46 | 누락 복구 | `backend` | S-3 | T-22 |
 | T-47 | 전체 프로젝트, 사용자 관리 | `backend`, `frontend` | R-3, R-10, V-15, V-16 | T-24, T-30 |
 | T-48 | 운영자 계정 관리 | `backend`, `frontend` | R-2, V-17 | T-24 |
