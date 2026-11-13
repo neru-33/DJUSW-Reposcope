@@ -2,20 +2,19 @@ package com.djusw.api;
 
 import java.util.List;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
+import com.djusw.api.support.DatabaseTest;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@SpringBootTest(properties = "spring.flyway.enabled=true")
+@DatabaseTest
 @Transactional
-@EnabledIfEnvironmentVariable(named = "DB_CONNECTION_TEST", matches = "true")
 class MigrationTests {
     @Autowired
     private JdbcTemplate jdbc;
@@ -31,6 +30,15 @@ class MigrationTests {
                 ORDER BY table_name""", String.class, schema);
         assertEquals(List.of("audit_logs", "deliverables", "project_invites", "project_members",
                 "project_repos", "project_status_history", "projects"), tables);
+    }
+
+    @Test
+    void appliesIngestMigrations() {
+        List<String> tables = jdbc.queryForList("""
+                SELECT table_name FROM information_schema.tables
+                WHERE table_schema = 'public'""", String.class);
+        assertTrue(tables.containsAll(List.of("installations", "repos", "processed_deliveries", "users",
+                "activities", "user_repos", "operator_credentials")), tables::toString);
     }
 
     @Test
