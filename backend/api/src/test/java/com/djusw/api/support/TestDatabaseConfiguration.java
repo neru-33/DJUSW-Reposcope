@@ -29,6 +29,8 @@ public class TestDatabaseConfiguration {
                 .locations(INGEST_MIGRATIONS)
                 .schemas(INGEST_SCHEMA)
                 .table("ingest_schema_history")
+                // worker는 SQL을 그대로 실행하므로 Flyway의 ${...} 치환을 끈다.
+                .placeholderReplacement(false)
                 .failOnMissingLocations(true)
                 .load()
                 .migrate();
