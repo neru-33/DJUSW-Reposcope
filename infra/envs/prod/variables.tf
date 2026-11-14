@@ -2,6 +2,11 @@ variable "name_prefix" {
   description = "자원 이름 앞에 붙는 접두어"
   type        = string
   default     = "reposcope"
+  # S3 버킷 이름과 RDS DB 이름에 들어가므로 소문자로 시작하고 소문자, 숫자, 하이픈만 쓴다.
+  validation {
+    condition     = can(regex("^[a-z][a-z0-9-]{0,19}$", var.name_prefix))
+    error_message = "name_prefix는 소문자로 시작하고 소문자, 숫자, 하이픈만 쓰는 20자 이하 값이어야 합니다."
+  }
 }
 
 variable "region" {
@@ -31,9 +36,9 @@ variable "db_password" {
 }
 
 variable "raw_bucket_name" {
-  description = "원본 이벤트 S3 버킷 이름. 전 세계에서 하나뿐이어야 하므로 충돌하면 바꾼다"
+  description = "원본 이벤트 S3 버킷 이름. 비우면 \"<name_prefix>-raw-events-<계정 ID>\"를 쓴다. 전 세계에서 하나뿐이어야 하므로 충돌하면 값을 직접 정한다"
   type        = string
-  default     = "reposcope-raw-events"
+  default     = null
 }
 
 variable "alert_email" {

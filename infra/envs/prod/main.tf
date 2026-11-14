@@ -1,3 +1,10 @@
+data "aws_caller_identity" "current" {}
+
+locals {
+  # 계정 번호를 붙여 전 세계에서 하나뿐인 이름을 만든다(bootstrap의 state 버킷과 같은 방식)
+  raw_bucket_name = coalesce(var.raw_bucket_name, "${var.name_prefix}-raw-events-${data.aws_caller_identity.current.account_id}")
+}
+
 module "network" {
   source = "../../modules/network"
 
@@ -21,13 +28,15 @@ module "data" {
   availability_zone   = module.network.availability_zone
   db_password         = var.db_password
   deletion_protection = var.rds_deletion_protection
+  db_name             = replace(var.name_prefix, "-", "_")
+  db_username         = replace(var.name_prefix, "-", "_")
 }
 
 module "ingest" {
   source = "../../modules/ingest"
 
   name_prefix               = var.name_prefix
-  raw_bucket_name           = var.raw_bucket_name
+  raw_bucket_name           = local.raw_bucket_name
   force_destroy             = var.raw_force_destroy
   webhook_secret_param_name = module.secrets.names["webhook-secret"]
   webhook_secret_param_arn  = module.secrets.arns["webhook-secret"]

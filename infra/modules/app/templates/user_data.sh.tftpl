@@ -1,8 +1,8 @@
 #!/bin/bash
 # EC2 최초 부팅 1회: Docker와 Compose 설치, 스왑 설정만 한다.
-# 로그: /var/log/reposcope-bootstrap.log
+# 로그: /var/log/${name_prefix}-bootstrap.log
 set -euo pipefail
-exec > >(tee -a /var/log/reposcope-bootstrap.log) 2>&1
+exec > >(tee -a /var/log/${name_prefix}-bootstrap.log) 2>&1
 echo "bootstrap start $(date -Is)"
 
 # EIP가 연결되기 전에는 인터넷이 안 될 수 있다(자동 퍼블릭 IP 없음). 최대 10분 기다린다.
