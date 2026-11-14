@@ -36,7 +36,7 @@ variable "alert_email" {
 }
 
 variable "lambda_source_dir" {
-  description = "수신 Lambda 소스코드 디렉터리(저장소의 webhook/)"
+  description = "수신 Lambda 소스코드 디렉터리(저장소의 webhook/src). 이 디렉터리 전체가 배포 파일에 들어간다"
   type        = string
 }
 
