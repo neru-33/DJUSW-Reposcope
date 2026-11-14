@@ -66,7 +66,7 @@
 | T-09 AWS 자원       | 작업 계획 3장      | `infra/modules/`의 `network`, `data`, `ingest`, `secrets`, `cost`, `infra/bootstrap/`              |
 | T-49 배포           | 작업 계획 3장      | `infra/envs/prod/`, `infra/modules/app/`, `docs/runbook/deploy.md`, `.github/workflows/images.yml` |
 
-설계 판단의 이유는 연계 프로젝트의 `docs/decisions/`에 있다.
+설계 판단의 이유는 [결정 기록](decisions/)에 있다. 연계 프로젝트에서 가져온 구성의 이유는 연계 프로젝트의 `docs/decisions/`에 있다.
 
 ### 백엔드
 

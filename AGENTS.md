@@ -23,6 +23,7 @@ GitHub App Webhook → API Gateway → Lambda → S3 원본 + SQS(+DLQ) → work
 | `docs/data-model.md` | 테이블, 제약 조건, 테이블 소유 |
 | `docs/api-spec.md` | API 경로, 요청, 응답, 오류 코드 |
 | `docs/work-guide.md` | 작업별 참고 위치 |
+| `docs/decisions/` | 설계 결정과 그 배경, 제외한 대안 |
 
 ## 폴더
 
@@ -45,8 +46,9 @@ GitHub App Webhook → API Gateway → Lambda → S3 원본 + SQS(+DLQ) → work
 - API는 worker 소유 테이블에 쓰지 않는다. worker는 `capstone` 스키마를 읽거나 쓰지 않는다.
 - `capstone` 테이블은 수집·계정 테이블에 외래 키를 걸지 않는다.
 - 현재 사용자 확인은 한 지점에서만 한다. 권한 검사는 화면뿐 아니라 API에서도 한다.
-- AWS 자원은 `infra/`의 Terraform으로만 바꾼다. 콘솔이나 CLI로 자원을 만드는 명령을 실행하지 않는다.
+- AWS와 Cloudflare 자원은 `infra/`의 Terraform으로만 바꾼다. 콘솔이나 CLI로 자원을 만드는 명령을 실행하지 않는다. 도메인 구매처럼 Terraform으로 할 수 없는 일은 `infra/README.md`에 절차를 적는다.
 - 문서와 주석에는 최종 내용만 쓴다. 요청 경위, 결정 과정, 대화 내용은 PR 본문이나 답변에 쓴다.
+- 결정 기록(`docs/decisions/`)에는 결정과 함께 배경과 제외한 대안을 쓴다. 논의 경위와 대화 내용은 쓰지 않는다.
 - 문서는 한국어로 쓴다.
 
 ## 연계 프로젝트
