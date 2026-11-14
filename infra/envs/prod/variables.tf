@@ -2,6 +2,11 @@ variable "name_prefix" {
   description = "자원 이름 앞에 붙는 접두어"
   type        = string
   default     = "reposcope"
+  # S3 버킷 이름과 RDS DB 이름에 들어가므로 소문자로 시작하고 소문자, 숫자, 하이픈만 쓴다.
+  validation {
+    condition     = can(regex("^[a-z][a-z0-9-]{0,19}$", var.name_prefix))
+    error_message = "name_prefix는 소문자로 시작하고 소문자, 숫자, 하이픈만 쓰는 20자 이하 값이어야 합니다."
+  }
 }
 
 variable "region" {
