@@ -65,7 +65,7 @@
 | 429 | `too_many_attempts` | 로그인 시도 횟수 초과 |
 | 500 | `internal_error` | 서버 오류 |
 
-다른 팀의 프로젝트를 요청하면 `403 forbidden`으로 응답한다.
+권한 칸의 `조회 권한`은 팀원, `PROFESSOR`, `SUPER_ADMIN`, `ADMIN`이다. `공개 조회 권한`은 조회 권한에 더해, 공개 범위가 `STUDENTS`인 프로젝트의 다른 팀 학생이다. 권한 없이 다른 팀의 프로젝트를 요청하면 `403 forbidden`으로 응답한다.
 
 ## 2. 상태 확인
 
@@ -150,12 +150,14 @@
 | 메서드 | 경로 | 권한 | 설명 |
 |---|---|---|---|
 | GET | `/api/projects` | 학생, 운영자 | 목록 |
+| GET | `/api/projects/public` | `STUDENT` | 공개 프로젝트 목록 |
 | POST | `/api/projects` | `STUDENT` | 등록, `201` |
-| GET | `/api/projects/{id}` | 조회 권한 | 상세 |
+| GET | `/api/projects/{id}` | 공개 조회 권한 | 상세 |
+| GET | `/api/projects/{id}/readme` | 공개 조회 권한 | 대표 저장소 README |
 | PATCH | `/api/projects/{id}` | 팀장, 운영자 | 수정 |
 | POST | `/api/projects/{id}/archive` | 팀장, 운영자 | 보관, `204` |
 | POST | `/api/projects/{id}/status` | 팀장, 운영자 | 진행 상태 변경, `204` |
-| GET | `/api/projects/{id}/status-history` | 조회 권한 | 상태 이력 |
+| GET | `/api/projects/{id}/status-history` | 공개 조회 권한 | 상태 이력 |
 
 학생은 자기 프로젝트만 받고, 운영자는 전체 프로젝트를 받는다. 교수는 조회만 할 수 있다.
 
@@ -167,11 +169,15 @@
     {
       "id": 12,
       "name": "RepoScope",
+      "team_name": "이클립스",
+      "description": "캡스톤 프로젝트 운영 서비스",
       "status": "DEVELOPMENT",
+      "visibility": "STUDENTS",
       "my_role": "LEADER",
       "leader_name": "홍길동",
       "member_count": 4,
       "last_activity_at": "2026-11-07T01:23:45Z",
+      "weekly_activity": [0, 2, 5, 8, 6, 0, 11, 14, 17, 21, 18, 24, 19, 26, 31, 22],
       "archived": false
     }
   ],
@@ -181,20 +187,28 @@
 }
 ```
 
-운영자가 조회하면 `my_role`은 `null`이다.
+운영자가 조회하면 `my_role`은 `null`이다. `weekly_activity`는 이번 주를 포함한 최근 16주의 주간 활동 수(커밋, PR, 이슈, 리뷰 합계)이고 마지막 값이 이번 주다.
+
+### `GET /api/projects/public`
+
+공개 범위가 `STUDENTS`이고 보관하지 않은 프로젝트를 돌려준다. 조회 조건은 `q`, `status`, `sort`, `page`, `size`다. `q`는 이름, 팀 이름, 설명에서 찾는다. `sort` 값은 `recent_activity`(기본), `name`, `created`다.
+
+응답 항목은 `GET /api/projects`와 같고, `my_role` 대신 요청한 학생이 팀원인지 나타내는 `is_member`를 준다.
 
 ### `POST /api/projects`
 
 ```json
 {
   "name": "RepoScope",
+  "team_name": "이클립스",
   "description": "캡스톤 프로젝트 운영 서비스",
   "starts_on": "2026-10-12",
-  "ends_on": "2026-11-30"
+  "ends_on": "2026-11-30",
+  "visibility": "TEAM"
 }
 ```
 
-`description`, `starts_on`, `ends_on`은 선택이다. 등록한 학생은 팀장이 되고, 응답은 상세 응답과 같다. `PATCH`는 같은 필드 중 바꿀 값만 받는다.
+`team_name`, `description`, `starts_on`, `ends_on`, `visibility`는 선택이다. `visibility` 값은 `TEAM`(기본), `STUDENTS`다. 등록한 학생은 팀장이 되고, 응답은 상세 응답과 같다. `PATCH`는 같은 필드 중 바꿀 값만 받는다.
 
 ### `GET /api/projects/{id}`
 
@@ -202,16 +216,43 @@
 {
   "id": 12,
   "name": "RepoScope",
+  "team_name": "이클립스",
   "description": "캡스톤 프로젝트 운영 서비스",
   "starts_on": "2026-10-12",
   "ends_on": "2026-11-30",
   "status": "DEVELOPMENT",
+  "visibility": "STUDENTS",
   "my_role": "LEADER",
   "archived": false,
   "can_edit": true,
-  "created_at": "2026-10-20T01:00:00Z"
+  "created_at": "2026-10-20T01:00:00Z",
+  "members": [
+    { "user_id": 7, "name": "홍길동", "login": "student-a", "github_id": 1234567, "role": "LEADER" }
+  ],
+  "repos": [
+    { "repo_id": 987654, "full_name": "team/project-web", "is_private": false, "is_primary": true }
+  ]
 }
 ```
+
+- `members`는 팀장을 먼저, 나머지는 이름순으로 준다. 학번은 넣지 않는다. 화면은 `github_id`로 프로필 사진 주소를 만든다.
+- `repos`는 연결 중인 저장소다.
+- 팀원이 아닌 학생이 공개 프로젝트를 조회하면 `my_role`은 `null`, `can_edit`은 `false`다.
+
+### `GET /api/projects/{id}/readme`
+
+대표 저장소의 README를 GitHub에서 가져와 Markdown으로 준다.
+
+```json
+{
+  "available": true,
+  "repo_full_name": "team/project-web",
+  "html_url": "https://github.com/team/project-web#readme",
+  "markdown": "# RepoScope\n..."
+}
+```
+
+표시할 수 없으면 `available`이 `false`이고 `reason`을 준다. `reason` 값은 `NO_PRIMARY_REPO`(대표 저장소 없음), `PRIVATE_REPO`(비공개 저장소), `NOT_FOUND`(README 없음)다. 화면은 Markdown을 HTML로 바꿀 때 허용 목록 방식으로 정리한다.
 
 ### `POST /api/projects/{id}/status`
 
@@ -282,6 +323,7 @@
 | GET | `/api/projects/{id}/repos` | 조회 권한 | 연결된 저장소 |
 | GET | `/api/projects/{id}/repo-candidates` | 팀장, 운영자 | 연결 가능한 저장소 |
 | POST | `/api/projects/{id}/repos` | 팀장, 운영자 | 연결, `201` |
+| POST | `/api/projects/{id}/repos/{repo_id}/primary` | 팀장, 운영자 | 대표 저장소로 지정, `204` |
 | DELETE | `/api/projects/{id}/repos/{repo_id}` | 팀장, 운영자 | 연결 해제, `204` |
 
 ```json
@@ -291,6 +333,7 @@
       "repo_id": 987654,
       "full_name": "team/project",
       "is_private": true,
+      "is_primary": true,
       "collect_status": "COLLECTING",
       "last_activity_at": "2026-11-07T01:23:45Z",
       "linked_at": "2026-10-21T01:00:00Z"
@@ -318,13 +361,13 @@
 
 접근 가능 저장소 목록은 로그인할 때 갱신한다. GitHub App을 설치한 뒤에는 화면이 `/auth/github/login?next=` 주소로 이동해 목록을 새로 받는다.
 
-연결 요청은 `{ "repo_id": 987654 }`다. 후보에 없는 저장소는 `403 forbidden`, 이미 연결된 저장소는 `409 repo_already_linked`로 응답한다.
+연결 요청은 `{ "repo_id": 987654 }`다. 후보에 없는 저장소는 `403 forbidden`, 이미 연결된 저장소는 `409 repo_already_linked`로 응답한다. 처음 연결한 저장소는 대표 저장소가 되고, 대표 저장소의 연결을 해제하면 남은 저장소 중 가장 먼저 연결한 저장소가 대표가 된다.
 
 ## 9. 활동 (R-8)
 
 | 메서드 | 경로 | 권한 | 설명 |
 |---|---|---|---|
-| GET | `/api/projects/{id}/activities` | 조회 권한 | 활동 목록 |
+| GET | `/api/projects/{id}/activities` | 공개 조회 권한 | 활동 목록 |
 
 조회 조건은 `from`, `to`, `kind`, `actor`, `repo_id`, `page`, `size`다. `from`과 `to`는 날짜이고 한국 시간 기준으로 해석한다. `kind` 값은 `COMMIT`, `PR`, `ISSUE`, `REVIEW`다.
 
@@ -358,7 +401,7 @@
 
 | 메서드 | 경로 | 권한 | 설명 |
 |---|---|---|---|
-| GET | `/api/projects/{id}/stats` | 조회 권한 | 프로젝트 통계 |
+| GET | `/api/projects/{id}/stats` | 공개 조회 권한 | 프로젝트 통계 |
 
 조회 조건은 `from`, `to`다. 값이 없으면 프로젝트 전체 기간을 집계한다.
 
