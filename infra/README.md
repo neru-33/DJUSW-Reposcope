@@ -18,6 +18,20 @@ AWS 자원은 Terraform으로만 만들고 바꾼다. `terraform apply`는 infra
 | `modules/data` | RDS PostgreSQL |
 | `modules/ingest` | S3 원본 버킷, SQS와 DLQ, 수신 Lambda, API Gateway, 알람 |
 | `modules/app` | EC2, 고정 IP, IAM 역할 |
+
+### 이름 규칙
+
+자원 이름은 `name_prefix`(기본값 `reposcope`)에서 만든다. 이름을 바꾸려면 `bootstrap/`과 `envs/prod/`의 `name_prefix`를 **같은 값**으로 정한다. state 버킷 이름이 bootstrap의 `name_prefix`에서 만들어지기 때문이다.
+
+| 자원 | 이름 |
+|---|---|
+| state 버킷 | `<name_prefix>-tfstate-<계정 ID>` |
+| 원본 이벤트 버킷 | `<name_prefix>-raw-events-<계정 ID>` (`raw_bucket_name`으로 바꿀 수 있다) |
+| DB 이름과 사용자 | `name_prefix`의 `-`를 `_`로 바꾼 값(PostgreSQL 이름에는 `-`를 쓸 수 없다). API와 worker는 `terraform output db_name` 값을 환경 변수로 받는다 |
+| Parameter Store 경로 | `/<name_prefix>/<이름>` |
+| EC2 부팅 로그 | `/var/log/<name_prefix>-bootstrap.log` |
+
+아래 설명의 `/reposcope/...` 경로는 기본값을 쓴 예시다.
 | `modules/cost` | 예산 알림 |
 
 ### 처음 만들 때

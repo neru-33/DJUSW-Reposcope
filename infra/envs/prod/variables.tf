@@ -31,9 +31,9 @@ variable "db_password" {
 }
 
 variable "raw_bucket_name" {
-  description = "원본 이벤트 S3 버킷 이름. 전 세계에서 하나뿐이어야 하므로 충돌하면 바꾼다"
+  description = "원본 이벤트 S3 버킷 이름. 비우면 \"<name_prefix>-raw-events-<계정 ID>\"를 쓴다. 전 세계에서 하나뿐이어야 하므로 충돌하면 값을 직접 정한다"
   type        = string
-  default     = "reposcope-raw-events"
+  default     = null
 }
 
 variable "alert_email" {

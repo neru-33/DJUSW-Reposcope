@@ -2,6 +2,6 @@
 alert_email = "team-alerts@example.com"
 
 # 필요하면 바꾼다.
-# raw_bucket_name    = "reposcope-raw-events"
+# raw_bucket_name    = "<직접 정할 버킷 이름>" # 비우면 "<name_prefix>-raw-events-<계정 ID>"를 쓴다
 # monthly_budget_usd = 50
 # instance_type      = "t3.small"
