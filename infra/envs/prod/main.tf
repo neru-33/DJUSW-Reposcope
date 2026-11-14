@@ -41,7 +41,7 @@ module "ingest" {
   webhook_secret_param_name = module.secrets.names["webhook-secret"]
   webhook_secret_param_arn  = module.secrets.arns["webhook-secret"]
   alert_email               = var.alert_email
-  lambda_source_dir         = "${path.root}/../../../webhook"
+  lambda_source_dir         = "${path.root}/../../../webhook/src"
   lambda_zip_path           = "${path.root}/.build/ingest.zip"
 }
 
