@@ -129,6 +129,11 @@ class HandlerTest(unittest.TestCase):
         self.assertEqual(resp["statusCode"], 401)
         self.assert_nothing_stored()
 
+    def test_non_ascii_signature_is_401(self):
+        resp = handler.handler(make_event(signature="sha256=é"), None)
+        self.assertEqual(resp["statusCode"], 401)
+        self.assert_nothing_stored()
+
     def test_tampered_body_is_401(self):
         event = make_event()
         event["body"] = event["body"].replace("created", "deleted")

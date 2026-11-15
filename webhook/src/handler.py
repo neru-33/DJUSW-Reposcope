@@ -53,8 +53,9 @@ def _secret_is_configured(secret):
 def verify_signature(body, signature_header, secret):
     if not signature_header or not signature_header.startswith("sha256="):
         return False
-    expected = "sha256=" + hmac.new(secret, body, hashlib.sha256).hexdigest()
-    return hmac.compare_digest(expected, signature_header)
+    expected = ("sha256=" + hmac.new(secret, body, hashlib.sha256).hexdigest()).encode()
+    # str끼리 비교하면 비ASCII 문자가 있을 때 TypeError가 나므로 바이트로 비교한다.
+    return hmac.compare_digest(expected, signature_header.encode("utf-8", "replace"))
 
 
 def _response(status, message):
