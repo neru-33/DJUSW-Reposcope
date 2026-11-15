@@ -74,7 +74,7 @@ AWS 자원은 Terraform으로만 만들고 바꾼다. `terraform apply`는 infra
 7. 알림 이메일로 도착한 SNS 구독 확인 메일의 `Confirm subscription`을 누른다.
 8. `terraform output webhook_url` 값을 GitHub App의 Webhook URL에 넣는다([GitHub App 설정](../docs/github-app.md)).
 
-수신 Lambda 코드는 `webhook/`에 있다. 수신 코드가 들어오기 전에 apply하면 `webhook/README.md`만 담긴, 실행할 수 없는 함수가 만들어진다.
+수신 Lambda 코드는 `webhook/src/`에 있고, apply할 때 이 디렉터리를 압축해 배포한다. 테스트와 로컬 실행 파일은 배포 파일에 들어가지 않는다.
 
 ### 컨테이너와 EC2 역할
 

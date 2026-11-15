@@ -72,7 +72,7 @@ resource "aws_lambda_function" "ingest" {
   handler          = var.lambda_handler
   architectures    = ["arm64"]
   memory_size      = 256
-  timeout          = 5
+  timeout          = 10 # GitHub가 응답을 기다리는 시간과 같다. 콜드 스타트에는 boto3 불러오기와 AWS 호출 3번이 한 번에 일어난다
   filename         = data.archive_file.ingest.output_path
   source_code_hash = data.archive_file.ingest.output_base64sha256
 
