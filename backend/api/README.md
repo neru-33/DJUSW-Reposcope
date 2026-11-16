@@ -50,6 +50,14 @@ Spring Security는 `/api/health`, `/api/version`, GitHub 로그인 시작·콜�
 
 로그인 과정에서 세션이나 CSRF 토큰을 교체한다면 교체 후 유효한 토큰을 응답해야 한다. 후속 로그인 작업에서 실제 로그인·설정 단계·로그아웃을 거친 토큰 발급과 검증을 통합 테스트한다. 공통 보안 테스트의 테스트용 로그인 경로는 실제 로그인 구현이 아니다.
 
+## 테스트
+
+`./gradlew test`로 실행한다. DB가 필요한 테스트는 실행할 때 PostgreSQL 컨테이너(`postgres:17-alpine`)를 띄우므로 Docker가 실행 중이어야 한다. Docker가 꺼져 있으면 이 테스트는 실패한다. DB 접속 환경 변수는 필요 없다.
+
+- 컨테이너에는 `backend/migrations/`의 수집·계정 마이그레이션을 `public` 스키마에 적용한 뒤 capstone 마이그레이션을 적용한다.
+- DB가 필요한 테스트 클래스에는 `@DatabaseTest`를 붙인다. 이 애너테이션을 쓰는 테스트는 컨테이너 하나를 함께 쓴다.
+- DB가 필요 없는 테스트는 컨테이너 없이 실행된다.
+
 ## Docker 실행
 
 루트의 `.env.example`을 `.env`로 복사하고 DB 접속 정보를 설정한 뒤 `backend/api/`에서 실행한다. Docker 컨테이너에서 `localhost`는 API 컨테이너 자신을 가리키므로, Docker Desktop의 호스트에서 실행 중인 PostgreSQL에 연결하려면 `DB_HOST=host.docker.internal`로 설정한다.

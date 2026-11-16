@@ -24,6 +24,11 @@ variable "name_prefix" {
   description = "버킷 이름 앞에 붙는 접두어"
   type        = string
   default     = "reposcope"
+  # envs/prod의 name_prefix와 같은 값을 쓰므로 같은 규칙으로 검사한다.
+  validation {
+    condition     = can(regex("^[a-z][a-z0-9-]{0,19}$", var.name_prefix))
+    error_message = "name_prefix는 소문자로 시작하고 소문자, 숫자, 하이픈만 쓰는 20자 이하 값이어야 합니다."
+  }
 }
 
 provider "aws" {

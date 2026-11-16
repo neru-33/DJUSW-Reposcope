@@ -12,6 +12,7 @@ DJUSW-Reposcope/
 ├─ webhook/      GitHub Webhook 수신 Lambda
 ├─ infra/        AWS 구성·배포 설정
 ├─ docs/         계획서, 주간 기록, 회의록, OSS 라이선스 검토
+│  └─ decisions/ 설계 결정 기록
 ├─ reports/      중간보고서, 결과보고서, 발표자료
 ├─ assets/       공개 가능한 이미지, 다이어그램, 시연 캡처
 ├─ data/         공개 가능한 데이터 설명
@@ -22,6 +23,7 @@ DJUSW-Reposcope/
 - 테스트 코드는 각 앱 폴더 안에 둔다.
 - 수동 검증만 가능하면 절차와 결과를 `reports/` 또는 `assets/`에 정리한다.
 - 주간 활동은 `docs/weekly-log.md`에 실제 수행 내용과 이슈·PR·결과물 링크를 기록한다.
+- 여러 작업에 영향을 주는 설계 결정은 `docs/decisions/<번호>-<짧은-설명>.md`로 기록한다. 머리에 날짜, 작성, 상태(제안 또는 확정)를 적고, 결정마다 배경, 결정, 대안(제외 이유 포함)을 쓴다. 번호는 0001부터 차례로 붙인다.
 
 ## 작업 흐름
 

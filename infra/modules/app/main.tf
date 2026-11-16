@@ -39,6 +39,7 @@ resource "aws_instance" "app" {
 
   user_data = templatefile("${path.module}/templates/user_data.sh.tftpl", {
     compose_version = var.compose_version
+    name_prefix     = var.name_prefix
   })
   user_data_replace_on_change = true
 

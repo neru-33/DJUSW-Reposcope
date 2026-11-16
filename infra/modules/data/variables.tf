@@ -25,15 +25,13 @@ variable "engine_version" {
 }
 
 variable "db_name" {
-  description = "초기 데이터베이스 이름. API의 DB_NAME 기본값과 같게 둔다"
+  description = "초기 데이터베이스 이름. envs/prod가 name_prefix에서 만들어 넘기며, API와 worker는 terraform output db_name 값을 환경 변수로 받는다"
   type        = string
-  default     = "reposcope"
 }
 
 variable "db_username" {
-  description = "마스터 사용자 이름"
+  description = "마스터 사용자 이름. envs/prod가 name_prefix에서 만들어 넘긴다"
   type        = string
-  default     = "reposcope"
 }
 
 variable "db_password" {
