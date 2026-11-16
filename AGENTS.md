@@ -20,6 +20,7 @@ GitHub App Webhook → API Gateway → Lambda → S3 원본 + SQS(+DLQ) → work
 | `docs/work-plan.md` | 작업 번호, 영역, 선행 관계, 폴더 |
 | `docs/feature-spec.md` | 기능 규칙과 완료 조건 |
 | `docs/screen-flow.md` | 화면 목록과 이동 경로 |
+| `docs/ui-guide.md` | UI 라이브러리, 색, 글꼴, 화면 유형별 배치 |
 | `docs/data-model.md` | 테이블, 제약 조건, 테이블 소유 |
 | `docs/api-spec.md` | API 경로, 요청, 응답, 오류 코드 |
 | `docs/work-guide.md` | 작업별 참고 위치 |
