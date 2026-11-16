@@ -82,7 +82,7 @@ flowchart LR
 |---|---|---|---|---|
 | T-20 | 학생 로그인과 가입 API | `backend` | R-1 | T-04, T-06, T-13 |
 | T-21 | 시작, 가입 화면 | `frontend` | R-1, V-1, V-2 | T-08 |
-| T-22 | 과거 기록 가져오기 | `backend` | S-3 | T-11 |
+| T-22 | 과거 기록과 README 가져오기 | `backend` | S-2, S-3 | T-11 |
 | T-23 | 리뷰와 병합 시각 수집 | `backend`, `webhook` | S-1, S-2 | T-11 |
 | T-24 | 운영자 로그인 API | `backend` | R-2 | T-04, T-13 |
 | T-25 | 운영자 로그인, 초기 설정 화면 | `frontend` | R-2, V-13, V-14 | T-08 |

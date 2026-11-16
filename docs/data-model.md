@@ -9,13 +9,13 @@ RepoScope는 PostgreSQL 하나에 두 영역의 테이블을 둔다. 수집·계
 - `capstone` 테이블은 수집·계정 테이블에 외래 키를 걸지 않고 ID 값만 저장한다. 두 영역을 따로 운영할 수 있게 하기 위해서다.
 - `capstone` 안의 테이블끼리는 외래 키를 건다.
 - 스키마 이름은 환경 변수로 받는다.
-- 코드, diff, 커밋 작성자 이메일, 커밋 본문, PR·이슈 본문, GitHub 토큰은 저장하지 않는다.
+- 코드, diff, 커밋 작성자 이메일, 커밋 본문, PR·이슈 본문, GitHub 토큰은 저장하지 않는다. 저장소의 README는 개요 표시용으로 `repo_readmes`에 저장한다.
 
 ## 2. 테이블 소유
 
 | 테이블 | 쓰는 쪽 | 읽는 쪽 |
 |---|---|---|
-| `installations`, `repos`, `activities`, `processed_deliveries`, `backfill_jobs` | worker | API |
+| `installations`, `repos`, `repo_readmes`, `activities`, `processed_deliveries`, `backfill_jobs` | worker | API |
 | `users`, `user_repos` | API | API |
 | `operator_credentials`, `operator_sessions`, `login_attempts` | API | API |
 | `capstone` 테이블 | API | API |
@@ -198,6 +198,18 @@ GitHub App 설치를 저장한다.
 | `is_private` | `boolean` | 비공개 여부 |
 | `status` | `text` | `LINKED`, `UNLINKED` |
 | `last_synced_at` | `timestamptz` | 마지막 설치 이벤트 시각 |
+
+### `repo_readmes`
+
+저장소의 README를 저장한다. RepoScope에서 추가한 테이블이다. README가 없으면 행이 없다.
+
+| 컬럼 | 타입 | 설명 |
+|---|---|---|
+| `repo_id` | `bigint` PK, FK | GitHub 저장소 ID |
+| `path` | `text` | 저장소 안 README 경로. 상대 경로 이미지와 링크의 기준이다 |
+| `content` | `text` | Markdown 본문. 512KB 이하 |
+| `etag` | `text` | GitHub 응답의 ETag. 조건부 요청에 쓴다 |
+| `fetched_at` | `timestamptz` | 마지막으로 가져온 시각 |
 
 ### `activities`
 
