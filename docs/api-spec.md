@@ -259,10 +259,9 @@
 | `reason` | 경우 |
 |---|---|
 | `NO_PRIMARY_REPO` | 대표 저장소가 없음 |
-| `PRIVATE_REPO` | 다른 팀 학생이 비공개 대표 저장소의 README를 조회함 |
 | `NOT_FOUND` | README가 없거나 아직 가져오지 않음 |
 
-- 프로젝트 조회 권한이 있으면 비공개 저장소의 README도 준다.
+- 공개 조회 권한이 있으면 대표 저장소가 비공개 저장소여도 README를 준다.
 - 화면은 Markdown을 HTML로 바꿀 때 허용 목록 방식으로 정리한다. 이미지와 링크 주소는 기능 명세 R-3의 규칙대로 바꾸고, 상대 경로의 기준은 `path`가 있는 폴더다.
 
 ### `POST /api/projects/{id}/status`
