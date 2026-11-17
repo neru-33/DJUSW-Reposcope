@@ -9,13 +9,13 @@ RepoScope는 PostgreSQL 하나에 두 영역의 테이블을 둔다. 수집·계
 - `capstone` 테이블은 수집·계정 테이블에 외래 키를 걸지 않고 ID 값만 저장한다. 두 영역을 따로 운영할 수 있게 하기 위해서다.
 - `capstone` 안의 테이블끼리는 외래 키를 건다.
 - 스키마 이름은 환경 변수로 받는다.
-- 코드, diff, 커밋 작성자 이메일, 커밋 본문, PR·이슈 본문, GitHub 토큰은 저장하지 않는다.
+- 코드, diff, 커밋 작성자 이메일, 커밋 본문, PR·이슈 본문, GitHub 토큰은 저장하지 않는다. 저장소의 README는 개요 표시용으로 `repo_readmes`에 저장한다.
 
 ## 2. 테이블 소유
 
 | 테이블 | 쓰는 쪽 | 읽는 쪽 |
 |---|---|---|
-| `installations`, `repos`, `activities`, `processed_deliveries`, `backfill_jobs` | worker | API |
+| `installations`, `repos`, `repo_readmes`, `activities`, `processed_deliveries`, `backfill_jobs` | worker | API |
 | `users`, `user_repos` | API | API |
 | `operator_credentials`, `operator_sessions`, `login_attempts` | API | API |
 | `capstone` 테이블 | API | API |
@@ -51,10 +51,12 @@ erDiagram
 |---|---|---|---|
 | `id` | `bigserial` | PK | |
 | `name` | `text` | NOT NULL, 1~100자 | 이름 |
+| `team_name` | `text` | 50자 이하 | 팀 이름 |
 | `description` | `text` | 500자 이하 | 설명 |
 | `starts_on` | `date` | | 시작일 |
 | `ends_on` | `date` | `starts_on` 이후 | 종료일 |
 | `status` | `text` | NOT NULL, 기본값 `PLANNING` | 진행 상태 |
+| `visibility` | `text` | NOT NULL, 기본값 `TEAM` | 공개 범위. `TEAM`(팀원에게만), `STUDENTS`(학생 모두) |
 | `program_id` | `bigint` | | 학기 분류 값 |
 | `archived_at` | `timestamptz` | | 보관 시각. `NULL`이면 사용 중 |
 | `created_by` | `bigint` | NOT NULL | 등록자 `users.id` 값 |
@@ -149,8 +151,10 @@ erDiagram
 | `linked_by` | `bigint` | NOT NULL | 연결한 `users.id` 값 |
 | `linked_at` | `timestamptz` | NOT NULL | |
 | `unlinked_at` | `timestamptz` | | 연결 해제 시각 |
+| `is_primary` | `boolean` | NOT NULL, 기본값 `false` | 대표 저장소 여부 |
 
 - 저장소별로 `unlinked_at`이 `NULL`인 행은 하나만 허용한다. 부분 유니크 인덱스로 보장한다.
+- 프로젝트별로 `is_primary`가 `true`이고 `unlinked_at`이 `NULL`인 행은 하나만 허용한다.
 - 연결 해제된 저장소의 활동은 `unlinked_at` 이전까지만 프로젝트에 표시한다.
 
 ### `audit_logs`
@@ -194,6 +198,18 @@ GitHub App 설치를 저장한다.
 | `is_private` | `boolean` | 비공개 여부 |
 | `status` | `text` | `LINKED`, `UNLINKED` |
 | `last_synced_at` | `timestamptz` | 마지막 설치 이벤트 시각 |
+
+### `repo_readmes`
+
+저장소의 README를 저장한다. RepoScope에서 추가한 테이블이다. README가 없으면 행이 없다.
+
+| 컬럼 | 타입 | 설명 |
+|---|---|---|
+| `repo_id` | `bigint` PK, FK | GitHub 저장소 ID |
+| `path` | `text` | 저장소 안 README 경로. 상대 경로 이미지와 링크의 기준이다 |
+| `content` | `text` | Markdown 본문. 512KB 이하 |
+| `etag` | `text` | GitHub 응답의 ETag. 조건부 요청에 쓴다 |
+| `fetched_at` | `timestamptz` | 마지막으로 가져온 시각 |
 
 ### `activities`
 
@@ -315,6 +331,8 @@ IP별 로그인 실패를 저장한다. (R-2)
 | `project_members` | `(user_id)` | 내 프로젝트 목록 |
 | `project_invites` | `(project_id)` 부분 유니크, `revoked_at IS NULL` | 유효 코드 하나 보장 |
 | `project_repos` | `(github_repo_id)` 부분 유니크, `unlinked_at IS NULL` | 저장소 중복 연결 방지 |
+| `project_repos` | `(project_id)` 부분 유니크, `is_primary AND unlinked_at IS NULL` | 대표 저장소 하나 보장 |
+| `projects` | `(visibility)` 부분 인덱스, `archived_at IS NULL` | 둘러보기 목록 |
 | `project_status_history` | `(project_id, changed_at)` | 상태 이력 |
 | `deliverables` | `(project_id)` | 결과물 목록 |
 
