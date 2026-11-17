@@ -1,5 +1,5 @@
-import { Link, NavLink, Outlet, useLocation } from 'react-router'
-import { homePath, roleLabels } from '../auth/access'
+import { Link, NavLink, Outlet, useLocation, useSearchParams } from 'react-router'
+import { homePath, roleLabels, safeNext } from '../auth/access'
 import { useAuth } from '../auth/context'
 import { menusFor } from '../auth/menus'
 import { githubLoginUrl } from '../auth/login'
@@ -8,9 +8,12 @@ import { githubLoginUrl } from '../auth/login'
 export function AppLayout() {
   const { state, logout } = useAuth()
   const location = useLocation()
+  const [searchParams] = useSearchParams()
   const me = state.me
   const menus = menusFor(me)
   const onAdminPage = location.pathname.startsWith('/admin')
+  // 로그인 화면으로 보내질 때 붙은 돌아갈 주소가 있으면 로그인 뒤 그곳으로 간다.
+  const loginNext = safeNext(searchParams.get('next')) ?? '/explore'
 
   return (
     <div className="app">
@@ -40,7 +43,7 @@ export function AppLayout() {
               </>
             )}
             {state.status === 'ready' && !me && !onAdminPage && (
-              <a className="primary-button" href={githubLoginUrl('/explore')}>
+              <a className="primary-button" href={githubLoginUrl(loginNext)}>
                 GitHub 로그인
               </a>
             )}

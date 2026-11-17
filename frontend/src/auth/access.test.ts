@@ -48,6 +48,18 @@ describe('checkAccess', () => {
     expect(checkAccess('anonymous', null, '/')).toEqual({ kind: 'allow' })
   })
 
+  it('시작 화면에 돌아갈 주소가 있으면 로그인한 사용자를 그곳으로 보낸다', () => {
+    expect(checkAccess('anonymous', me('STUDENT'), '/?next=%2Fprojects%2F3')).toEqual({
+      kind: 'redirect',
+      to: '/projects/3',
+    })
+    expect(checkAccess('anonymous', me('GUEST'), '/?next=%2Fprojects')).toEqual({ kind: 'redirect', to: '/signup' })
+    expect(checkAccess('anonymous', me('STUDENT'), '/?next=%2F%2Fevil.example')).toEqual({
+      kind: 'redirect',
+      to: '/explore',
+    })
+  })
+
   it('직위가 맞지 않으면 권한 없음이다', () => {
     expect(checkAccess('student', me('PROFESSOR'), '/projects')).toEqual({ kind: 'forbidden' })
     expect(checkAccess(['SUPER_ADMIN', 'ADMIN'], me('PROFESSOR'), '/admin/users')).toEqual({ kind: 'forbidden' })

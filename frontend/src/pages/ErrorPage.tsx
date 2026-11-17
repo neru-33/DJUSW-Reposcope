@@ -27,6 +27,8 @@ export function ErrorPage({ kind }: { kind: keyof typeof contents }) {
   const auth = useContext(AuthContext)
   const navigate = useNavigate()
   const content = contents[kind]
+  // 주소를 바로 열어 앱 안에 이전 화면이 없으면 첫 화면으로 보낸다.
+  const canGoBack = ((window.history.state as { idx?: number } | null)?.idx ?? 0) > 0
 
   return (
     <Stack gap="md" align="flex-start" maw={560} py={48}>
@@ -34,7 +36,7 @@ export function ErrorPage({ kind }: { kind: keyof typeof contents }) {
       <Text c="dimmed" size="lg">
         {content.message}
       </Text>
-      {kind === 'forbidden' ? (
+      {kind === 'forbidden' && canGoBack ? (
         <Button variant="default" onClick={() => navigate(-1)}>
           이전 화면으로
         </Button>

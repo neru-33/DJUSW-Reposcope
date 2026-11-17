@@ -3,6 +3,8 @@ import type { ApiErrorBody, Me } from './types'
 
 const CSRF_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])
 const ME_PATH = '/api/me'
+/** 401을 받아도 세션 만료로 보지 않는 요청. 로그인 상태 확인과 로그아웃이다. */
+const SESSION_CHECK_EXEMPT = new Set([ME_PATH, '/auth/logout'])
 
 let csrfToken: string | null = null
 
@@ -16,8 +18,8 @@ type UnauthorizedHandler = () => void
 let unauthorizedHandler: UnauthorizedHandler | null = null
 
 /**
- * 로그인 중 요청이 401을 받으면 부를 함수를 정한다. 세션 만료 처리에 쓴다.
- * `GET /api/me`의 401은 로그인하지 않은 상태라 부르지 않는다.
+ * 로그인 중 요청이 `401 unauthorized`를 받으면 부를 함수를 정한다. 세션 만료 처리에 쓴다.
+ * 비밀번호·OTP가 틀린 `401 invalid_credentials`, 로그인 상태 확인, 로그아웃에는 부르지 않는다.
  */
 export function setUnauthorizedHandler(handler: UnauthorizedHandler | null): void {
   unauthorizedHandler = handler
@@ -116,8 +118,11 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
 
   const data = await readJson(response)
   if (!response.ok) {
-    if (response.status === 401 && path !== ME_PATH) unauthorizedHandler?.()
-    throw new ApiError(response.status, toErrorBody(data, response.status))
+    const error = new ApiError(response.status, toErrorBody(data, response.status))
+    if (error.status === 401 && error.code === 'unauthorized' && !SESSION_CHECK_EXEMPT.has(path)) {
+      unauthorizedHandler?.()
+    }
+    throw error
   }
   return data as T
 }

@@ -59,7 +59,8 @@ describe('화면 틀', () => {
 
     expect(await screen.findByRole('heading', { name: 'V-1 시작' })).toBeTruthy()
     expect(router.state.location.search).toBe('?next=%2Fprojects')
-    expect(screen.getByRole('link', { name: 'GitHub 로그인' })).toBeTruthy()
+    const login = screen.getByRole('link', { name: 'GitHub 로그인' })
+    expect(login.getAttribute('href')).toBe('/auth/github/login?next=%2Fprojects')
   })
 
   it('학생은 첫 화면이 둘러보기이고 학생 메뉴가 보인다', async () => {
@@ -85,6 +86,8 @@ describe('화면 틀', () => {
     renderAt('/admin/users')
 
     expect(await screen.findByRole('heading', { name: '볼 수 있는 권한이 없습니다' })).toBeTruthy()
+    // 주소를 바로 열어 이전 화면이 없으면 첫 화면으로 가는 버튼을 준다.
+    expect(screen.getByRole('link', { name: '첫 화면으로' }).getAttribute('href')).toBe('/admin/projects')
   })
 
   it('없는 주소는 찾을 수 없는 화면을 보여 준다', async () => {

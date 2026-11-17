@@ -52,7 +52,10 @@ export function checkAccess(access: Access, me: Me | null, target: string): Acce
   if (access === 'public') return { kind: 'allow' }
 
   if (access === 'anonymous') {
-    return me ? { kind: 'redirect', to: homePath(me) } : { kind: 'allow' }
+    if (!me) return { kind: 'allow' }
+    // 로그인 화면에 돌아갈 주소가 있으면 그곳으로 보낸다. 가입 전이면 가입부터 한다.
+    const next = needsSignup(me) ? null : safeNext(new URLSearchParams(target.split('?')[1] ?? '').get('next'))
+    return { kind: 'redirect', to: next ?? homePath(me) }
   }
 
   if (!me) return { kind: 'redirect', to: loginPath(target) }
