@@ -85,6 +85,8 @@ MSYS_NO_PATHCONV=1 docker run --rm --network reposcope-local_default \
 
 PowerShell에서는 `MSYS_NO_PATHCONV=1`을 빼고 `-v "${PWD}:/src:ro"`로 쓴다. skip 없이 모두 통과해야 한다. `WORKER_TEST_DB_DSN`이 없으면 DB 테스트는 skip된다.
 
+CI(`.github/workflows/ci.yml`의 `worker` job)도 같은 이미지와 명령으로 실행하고, 건너뛴 테스트가 있으면 실패한다.
+
 ## 로컬 확인 (수신 함수 없이)
 
 S3에 fixture를 올리고 SQS에 메시지를 넣어 수신 함수를 흉내 낸다. 저장소 루트에서 Git Bash로 실행한다.
