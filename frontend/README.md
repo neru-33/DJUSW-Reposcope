@@ -38,10 +38,22 @@ npm run dev
 
 | 경로 | 내용 |
 |---|---|
-| `src/api/client.ts` | API 호출. 쿠키를 보내고 쓰기 요청에 `X-CSRF-Token`을 붙인다 |
+| `src/api/client.ts` | API 호출. 쿠키를 보내고 쓰기 요청에 `X-CSRF-Token`을 붙인다. 로그인 중 401이면 세션 만료로 처리한다 |
+| `src/api/useApiData.ts` | 화면이 열릴 때 API를 불러오는 훅 |
 | `src/api/types.ts` | API 공통 응답 타입 |
-| `src/screens.ts` | 화면 흐름 문서의 화면 목록과 주소 |
+| `src/auth/` | 현재 사용자, 화면 접근 규칙, 직위별 메뉴, 로그인 주소 |
+| `src/layout/` | 상단바와 본문 틀 |
+| `src/components/` | 불러오는 중, 빈 상태, 오류, 확인 대화상자, 알림 |
+| `src/screens.ts` | 화면 흐름 문서의 화면 목록, 주소, 접근 규칙 |
 | `src/router.tsx` | 주소와 화면 연결 |
 | `src/pages/` | 화면 |
+| `src/theme.ts`, `src/index.css` | Mantine 테마와 화면 틀 스타일 |
 
-API는 [`docs/api-spec.md`](../docs/api-spec.md), 화면 주소는 [`docs/screen-flow.md`](../docs/screen-flow.md)를 따른다.
+API는 [`docs/api-spec.md`](../docs/api-spec.md), 화면 주소와 이동은 [`docs/screen-flow.md`](../docs/screen-flow.md), 색과 배치는 [`docs/ui-guide.md`](../docs/ui-guide.md)를 따른다.
+
+## 화면을 만들 때
+
+- 화면은 `src/screens.ts`의 화면을 `src/router.tsx`에서 실제 화면으로 바꿔 끼운다. 접근 규칙은 `RequireAccess`가 검사한다.
+- 데이터는 `useApiData`로 불러오고 `DataState`로 불러오는 중, 오류, 권한 없음을 표시한다.
+- 저장 결과는 `notifySuccess`, 위험한 동작은 `ConfirmDialog`를 쓴다.
+- 테스트는 jsdom에서 실행한다. Mantine 화면은 `MantineProvider`로 감싸서 렌더링한다.

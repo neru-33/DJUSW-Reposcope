@@ -2,12 +2,25 @@ import { config } from '../config'
 import type { ApiErrorBody, Me } from './types'
 
 const CSRF_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])
+const ME_PATH = '/api/me'
 
 let csrfToken: string | null = null
 
 /** 쓰기 요청에 보낼 CSRF 토큰을 정한다. 값은 GET /api/me 응답에서 받는다. */
 export function setCsrfToken(token: string | null): void {
   csrfToken = token
+}
+
+type UnauthorizedHandler = () => void
+
+let unauthorizedHandler: UnauthorizedHandler | null = null
+
+/**
+ * 로그인 중 요청이 401을 받으면 부를 함수를 정한다. 세션 만료 처리에 쓴다.
+ * `GET /api/me`의 401은 로그인하지 않은 상태라 부르지 않는다.
+ */
+export function setUnauthorizedHandler(handler: UnauthorizedHandler | null): void {
+  unauthorizedHandler = handler
 }
 
 export class ApiError extends Error {
@@ -66,7 +79,8 @@ function toErrorBody(data: unknown, status: number): ApiErrorBody {
 }
 
 function isAbortError(error: unknown): boolean {
-  return error instanceof Error && error.name === 'AbortError'
+  // DOMException은 실행 환경에 따라 Error를 상속하지 않으므로 이름으로 판별한다.
+  return typeof error === 'object' && error !== null && (error as { name?: unknown }).name === 'AbortError'
 }
 
 /**
@@ -101,7 +115,10 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
   if (response.status === 204) return undefined as T
 
   const data = await readJson(response)
-  if (!response.ok) throw new ApiError(response.status, toErrorBody(data, response.status))
+  if (!response.ok) {
+    if (response.status === 401 && path !== ME_PATH) unauthorizedHandler?.()
+    throw new ApiError(response.status, toErrorBody(data, response.status))
+  }
   return data as T
 }
 
@@ -118,7 +135,7 @@ export const api = {
  */
 export async function fetchMe(): Promise<Me> {
   try {
-    const me = await request<Me>('/api/me')
+    const me = await request<Me>(ME_PATH)
     setCsrfToken(me.csrf_token)
     return me
   } catch (error) {

@@ -27,6 +27,10 @@
 | TypeScript | 7.0.2 | [npm](https://www.npmjs.com/package/typescript/v/7.0.2) | Apache-2.0 | 타입 검사 | 개발 도구. 빌드 결과에 포함되지 않음 |
 | Vitest | 5.1.0 | [npm](https://www.npmjs.com/package/vitest/v/5.1.0) | MIT | 테스트 | 개발 도구. 빌드 결과에 포함되지 않음 |
 | oxlint | 1.92.0 | [npm](https://www.npmjs.com/package/oxlint/v/1.92.0) | MIT | 코드 검사 | 개발 도구. 빌드 결과에 포함되지 않음 |
+| Mantine (`@mantine/core`, `@mantine/hooks`, `@mantine/notifications`) | 9.8.1 | [npm](https://www.npmjs.com/package/@mantine/core/v/9.8.1) | MIT | 화면 부품, 테마, 알림 | 공개 가능. 배포 시 라이선스 고지 유지 |
+| Pretendard | 1.3.9 | [npm](https://www.npmjs.com/package/pretendard/v/1.3.9) | OFL-1.1 | 웹 글꼴 | 공개 가능. 글꼴 파일과 함께 라이선스 고지 유지, 글꼴을 단독으로 판매하지 않음 |
+| jsdom | 31.0.1 | [npm](https://www.npmjs.com/package/jsdom/v/31.0.1) | MIT | 화면 테스트의 브라우저 환경 | 개발 도구. 빌드 결과에 포함되지 않음 |
+| Testing Library (`@testing-library/react`, `dom`, `user-event`) | react 16.3.3, dom 10.4.2, user-event 14.6.12 | [npm](https://www.npmjs.com/package/@testing-library/react/v/16.3.3) | MIT | 화면 테스트 | 개발 도구. 빌드 결과에 포함되지 않음 |
 | actions/checkout, actions/setup-java, actions/setup-node | checkout v7, setup-java v6, setup-node v7 | [actions](https://github.com/actions) | MIT | CI 소스 내려받기와 실행 환경 준비 | CI 도구. 저장소 결과물에 포함되지 않음 |
 | gradle/actions (setup-gradle) | v6 | [gradle/actions](https://github.com/gradle/actions) | MIT(기본 캐시 `cache-provider: basic`만 사용) | CI의 Gradle 설정과 캐시 | CI 도구. 독점 구성 요소인 Enhanced Caching은 사용하지 않음 |
 
@@ -37,7 +41,7 @@
 - `postgres:17-alpine`, `python:3.13-slim`은 변경 가능한 태그이므로 이미지를 다시 받으면 세부 버전이 달라질 수 있다.
 - worker의 Python 의존성 버전은 `backend/worker/requirements.txt` 기준이다. `boto3`의 `botocore`, `PyJWT[crypto]`의 `cryptography` 등 간접 의존성은 배포 전에 추가 확인한다.
 - 프런트엔드 버전은 `frontend/package-lock.json` 기준이다. 의존성을 바꾸면 다시 확인한다.
-- 프런트엔드 빌드 결과에 포함되는 런타임 의존성은 간접 의존성을 포함해 6개이고 모두 MIT다.
+- 프런트엔드 런타임 의존성은 간접 의존성을 포함해 39개다. MIT 35개, Pretendard(OFL-1.1), `react-transition-group`(BSD-3-Clause), `tslib`(0BSD), `type-fest`(MIT 또는 CC0-1.0) 각 1개다.
 - 개발 의존성 중 `lightningcss`는 MPL-2.0이다. Vite가 CSS를 처리할 때 쓰는 개발 도구이고, 빌드 결과에 포함되지 않으며 소스를 수정하지 않는다.
 
 ## 공개 제한 검토
