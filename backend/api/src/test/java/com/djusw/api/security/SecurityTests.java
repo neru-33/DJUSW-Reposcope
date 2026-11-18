@@ -32,9 +32,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
-@SpringBootTest(properties = {"DB_USER=test", "DB_PASSWORD=test"})
+@SpringBootTest(properties = {"DB_USER=test", "DB_PASSWORD=test", "app.cors.allowed-origin=https://www.eclipse-sync.com"})
 @Import(SecurityTests.TestEndpoints.class)
 class SecurityTests {
     @Autowired WebApplicationContext context;
@@ -49,6 +51,87 @@ class SecurityTests {
     void healthAndVersionArePublic() throws Exception {
         mvc.perform(get("/api/health")).andExpect(status().isOk());
         mvc.perform(get("/api/version")).andExpect(status().isOk());
+    }
+
+    @Test
+    void allowedOriginReceivesCorsHeadersEvenWhenUnauthenticated() throws Exception {
+        mvc.perform(get("/api/test/profile").header("Origin", "https://www.eclipse-sync.com"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(header().string("Access-Control-Allow-Origin", "https://www.eclipse-sync.com"))
+                .andExpect(header().string("Access-Control-Allow-Credentials", "true"))
+                .andExpect(header().stringValues("Vary", org.hamcrest.Matchers.hasItem("Origin")));
+    }
+
+    @Test
+    void anonymousPreflightPermitsApiMethodsAndHeaders() throws Exception {
+        for (String method : List.of("GET", "POST", "PATCH", "DELETE")) {
+            mvc.perform(options("/api/test/write")
+                            .header("Origin", "https://www.eclipse-sync.com")
+                            .header("Access-Control-Request-Method", method)
+                            .header("Access-Control-Request-Headers", "Content-Type, X-CSRF-Token"))
+                    .andExpect(status().isOk())
+                    .andExpect(header().string("Access-Control-Allow-Origin", "https://www.eclipse-sync.com"))
+                    .andExpect(header().string("Access-Control-Allow-Credentials", "true"))
+                    .andExpect(header().string("Access-Control-Max-Age", "600"))
+                    .andExpect(header().string("Access-Control-Allow-Headers", "Content-Type, X-CSRF-Token"))
+                    .andExpect(header().string("Access-Control-Allow-Methods", org.hamcrest.Matchers.containsString(method)))
+                    .andExpect(header().string("Cache-Control", org.hamcrest.Matchers.containsString("no-store")))
+                    .andExpect(header().stringValues("Vary", org.hamcrest.Matchers.hasItem("Origin")));
+        }
+    }
+
+    @Test
+    void otherOriginsDoNotReceiveCorsPermission() throws Exception {
+        for (String origin : List.of("https://evil.eclipse-sync.com", "https://www.eclipse-sync.com.evil.example",
+                "http://www.eclipse-sync.com", "https://www.eclipse-sync.com:444")) {
+            mvc.perform(get("/api/health").header("Origin", origin))
+                    .andExpect(status().isForbidden())
+                    .andExpect(header().string("Cache-Control", org.hamcrest.Matchers.containsString("no-store")))
+                    .andExpect(header().doesNotExist("Access-Control-Allow-Origin"))
+                    .andExpect(header().doesNotExist("Access-Control-Allow-Credentials"))
+                    .andExpect(header().stringValues("Vary", org.hamcrest.Matchers.hasItem("Origin")));
+            mvc.perform(options("/api/test/write").header("Origin", origin)
+                            .header("Access-Control-Request-Method", "POST")
+                            .header("Access-Control-Request-Headers", "Content-Type, X-CSRF-Token"))
+                    .andExpect(status().isForbidden())
+                    .andExpect(header().string("Cache-Control", org.hamcrest.Matchers.containsString("no-store")))
+                    .andExpect(header().doesNotExist("Access-Control-Allow-Origin"))
+                    .andExpect(header().doesNotExist("Access-Control-Allow-Credentials"))
+                    .andExpect(header().doesNotExist("Access-Control-Allow-Headers"))
+                    .andExpect(header().doesNotExist("Access-Control-Allow-Methods"))
+                    .andExpect(header().stringValues("Vary", org.hamcrest.Matchers.hasItem("Origin")));
+        }
+    }
+
+    @Test
+    void apiResponsesAreNotStoredByCaches() throws Exception {
+        mvc.perform(get("/api/health"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Cache-Control", org.hamcrest.Matchers.containsString("no-store")));
+        mvc.perform(get("/api/test/profile"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(header().string("Cache-Control", org.hamcrest.Matchers.containsString("no-store")));
+        mvc.perform(get("/api/test/me").with(authentication(user(CurrentUser.Role.STUDENT))))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Cache-Control", org.hamcrest.Matchers.containsString("no-store")));
+    }
+
+    @Test
+    void rejectsWildcardAndMultipleConfiguredOrigins() {
+        var config = new SecurityConfig();
+        for (String origin : List.of("*", "https://*.eclipse-sync.com",
+                "https://www.eclipse-sync.com,https://other.example", "https://www.eclipse-sync.com/path", "")) {
+            assertThrows(IllegalArgumentException.class, () -> config.corsConfigurationSource(origin));
+        }
+    }
+
+    @Test
+    void corsDoesNotBypassCsrfForAuthenticatedWrites() throws Exception {
+        mvc.perform(post("/api/test/write").with(authentication(user(CurrentUser.Role.STUDENT)))
+                        .header("Origin", "https://www.eclipse-sync.com"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error").value("csrf"))
+                .andExpect(header().string("Access-Control-Allow-Origin", "https://www.eclipse-sync.com"));
     }
 
     @Test
