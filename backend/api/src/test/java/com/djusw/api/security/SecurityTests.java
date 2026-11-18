@@ -72,6 +72,7 @@ class SecurityTests {
                     .andExpect(status().isOk())
                     .andExpect(header().string("Access-Control-Allow-Origin", "https://www.eclipse-sync.com"))
                     .andExpect(header().string("Access-Control-Allow-Credentials", "true"))
+                    .andExpect(header().string("Access-Control-Max-Age", "600"))
                     .andExpect(header().string("Access-Control-Allow-Headers", "Content-Type, X-CSRF-Token"))
                     .andExpect(header().string("Access-Control-Allow-Methods", org.hamcrest.Matchers.containsString(method)))
                     .andExpect(header().string("Cache-Control", org.hamcrest.Matchers.containsString("no-store")))
@@ -88,7 +89,7 @@ class SecurityTests {
                     .andExpect(header().string("Cache-Control", org.hamcrest.Matchers.containsString("no-store")))
                     .andExpect(header().doesNotExist("Access-Control-Allow-Origin"))
                     .andExpect(header().doesNotExist("Access-Control-Allow-Credentials"))
-                    .andExpect(header().stringValues("Vary", org.hamcrest.Matchers.not(org.hamcrest.Matchers.hasItem("Origin"))));
+                    .andExpect(header().stringValues("Vary", org.hamcrest.Matchers.hasItem("Origin")));
             mvc.perform(options("/api/test/write").header("Origin", origin)
                             .header("Access-Control-Request-Method", "POST")
                             .header("Access-Control-Request-Headers", "Content-Type, X-CSRF-Token"))
@@ -98,7 +99,7 @@ class SecurityTests {
                     .andExpect(header().doesNotExist("Access-Control-Allow-Credentials"))
                     .andExpect(header().doesNotExist("Access-Control-Allow-Headers"))
                     .andExpect(header().doesNotExist("Access-Control-Allow-Methods"))
-                    .andExpect(header().stringValues("Vary", org.hamcrest.Matchers.not(org.hamcrest.Matchers.hasItem("Origin"))));
+                    .andExpect(header().stringValues("Vary", org.hamcrest.Matchers.hasItem("Origin")));
         }
     }
 

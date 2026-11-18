@@ -30,7 +30,6 @@ public class SecurityConfig {
         var csrfTokens = new HttpSessionCsrfTokenRepository();
         csrfTokens.setHeaderName("X-CSRF-Token");
         var corsFilter = new CorsFilter(corsSource);
-        corsFilter.setCorsProcessor(new AllowedOriginCorsProcessor());
         http.addFilterAt(corsFilter, CorsFilter.class)
             .authorizeHttpRequests(authorize -> authorize
                 .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
@@ -80,6 +79,7 @@ public class SecurityConfig {
         configuration.setAllowedMethods(List.of("GET", "POST", "PATCH", "DELETE"));
         configuration.setAllowedHeaders(List.of("Content-Type", "X-CSRF-Token"));
         configuration.setAllowCredentials(true);
+        configuration.setMaxAge(600L);
         var source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;

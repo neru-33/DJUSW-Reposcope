@@ -42,7 +42,7 @@ class ForwardedIpTests {
     }
 
     @Test
-    void disallowedOriginDoesNotReceiveVaryOriginOnRealServer() throws Exception {
+    void disallowedOriginReceivesVaryOriginOnRealServer() throws Exception {
         var uri = URI.create("http://127.0.0.1:" + port + "/api/health");
         var client = HttpClient.newHttpClient();
         for (String method : new String[]{"GET", "OPTIONS"}) {
@@ -57,7 +57,7 @@ class ForwardedIpTests {
             assertEquals(true, response.headers().firstValue("Access-Control-Allow-Origin").isEmpty());
             assertEquals(true, response.headers().allValues("Vary").stream()
                     .flatMap(value -> java.util.Arrays.stream(value.split(",")))
-                    .noneMatch(value -> value.trim().equalsIgnoreCase("Origin")));
+                    .anyMatch(value -> value.trim().equalsIgnoreCase("Origin")));
             assertEquals(true, response.headers().firstValue("Cache-Control").orElseThrow().contains("no-store"));
         }
     }
