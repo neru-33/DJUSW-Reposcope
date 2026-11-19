@@ -5,8 +5,9 @@ set -eu
 
 : "${LOCAL_WEBHOOK_SECRET:?.env에 LOCAL_WEBHOOK_SECRET을 설정한다}"
 : "${DB_PASSWORD:?.env에 DB_PASSWORD를 설정한다}"
+: "${LOCAL_NAME_PREFIX:?.env에 LOCAL_NAME_PREFIX를 설정한다}"
 
-PREFIX="reposcope"
+PREFIX="$LOCAL_NAME_PREFIX"
 REGION="${AWS_DEFAULT_REGION:-ap-northeast-2}"
 
 i=0

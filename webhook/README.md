@@ -3,8 +3,8 @@
 GitHub App의 Webhook 요청을 받아 서명을 검증하고, 원본 payload를 S3에, S3 위치를 담은 메시지를 SQS에 보낸다(기능 명세 S-1). Python 3.13으로 구현했고 DB에는 접근하지 않는다.
 
 ```text
-GitHub → API Gateway POST /webhook → Lambda → S3 reposcope-raw-events (원본)
-                                            └ SQS reposcope-events → worker
+GitHub → API Gateway POST /webhook → Lambda → S3 <접두어>-raw-events (원본)
+                                            └ SQS <접두어>-events → worker
 ```
 
 ## 폴더
@@ -41,11 +41,11 @@ Terraform은 `src/`만 압축해 배포한다(`infra/envs/prod/main.tf`의 `lamb
 
 | 변수 | 내용 | 로컬 값 |
 |---|---|---|
-| `WEBHOOK_SECRET_PARAM` | 서명 비밀값이 든 Parameter Store 이름 | `/reposcope/webhook-secret` |
-| `RAW_BUCKET` | 원본 이벤트 버킷 | `reposcope-raw-events` |
-| `QUEUE_URL` | 이벤트 큐 주소 | `http://moto:5000/123456789012/reposcope-events` |
+| `WEBHOOK_SECRET_PARAM` | 서명 비밀값이 든 Parameter Store 이름 | `/<접두어>/webhook-secret` |
+| `RAW_BUCKET` | 원본 이벤트 버킷 | `<접두어>-raw-events` |
+| `QUEUE_URL` | 이벤트 큐 주소 | `http://moto:5000/123456789012/<접두어>-events` |
 
-AWS에서는 Terraform이 위 값을 설정한다. 로컬에서는 `infra/local/compose.yml`의 `ingest` 서비스에 들어 있다.
+AWS에서는 Terraform이 위 값을 설정한다. 로컬에서는 `infra/local/compose.yml`의 `ingest` 서비스에 들어 있고, `<접두어>`는 `.env`의 `LOCAL_NAME_PREFIX`다.
 
 ## 테스트
 
