@@ -34,7 +34,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@SpringBootTest(properties = {"DB_USER=test", "DB_PASSWORD=test"})
+@SpringBootTest(properties = {"DB_NAME=test", "DB_USER=test", "DB_PASSWORD=test"})
 @Import(SecurityTests.TestEndpoints.class)
 class SecurityTests {
     @Autowired WebApplicationContext context;

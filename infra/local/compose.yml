@@ -9,6 +9,16 @@
 
 name: reposcope-local
 
+# api와 worker가 postgres에 접속하는 설정. DB 이름, 사용자, 비밀번호는 .env 값을 쓴다.
+x-db: &db
+  # 컨테이너 사이의 주소라서 .env의 DB_HOST, DB_PORT를 쓰지 않는다. DB_PORT는 내 컴퓨터에 여는 포트만 바꾼다.
+  DB_HOST: postgres
+  DB_PORT: "5432"
+  DB_NAME: ${DB_NAME:?.env에 DB_NAME을 설정한다}
+  DB_USER: ${DB_USER:?.env에 DB_USER를 설정한다}
+  DB_PASSWORD: ${DB_PASSWORD:?.env에 DB_PASSWORD를 설정한다}
+  DB_SSLMODE: disable
+
 # moto에 접속하는 컨테이너가 쓰는 값. moto는 자격 증명을 검사하지 않으므로 실제 AWS 키가 아니다.
 x-aws-local: &aws-local
   AWS_ENDPOINT_URL: http://moto:5000
@@ -21,8 +31,8 @@ services:
   postgres:
     image: postgres:17-alpine
     environment:
-      POSTGRES_DB: ${DB_NAME:-reposcope}
-      POSTGRES_USER: ${DB_USER:-reposcope}
+      POSTGRES_DB: ${DB_NAME:?.env에 DB_NAME을 설정한다}
+      POSTGRES_USER: ${DB_USER:?.env에 DB_USER를 설정한다}
       POSTGRES_PASSWORD: ${DB_PASSWORD:?.env에 DB_PASSWORD를 설정한다}
     ports:
       - "127.0.0.1:${DB_PORT:-5432}:5432"
@@ -40,12 +50,7 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      DB_HOST: postgres
-      DB_PORT: "5432"
-      DB_NAME: ${DB_NAME:-reposcope}
-      DB_USER: ${DB_USER:-reposcope}
-      DB_PASSWORD: ${DB_PASSWORD:?.env에 DB_PASSWORD를 설정한다}
-      DB_SSLMODE: disable
+      <<: *db
       CAPSTONE_SCHEMA: ${CAPSTONE_SCHEMA:-capstone}
       APP_VERSION: ${APP_VERSION:-local}
     ports:
@@ -59,6 +64,7 @@ services:
       - "127.0.0.1:4566:5000"
 
   # moto가 뜬 뒤 S3 버킷, SQS 큐(DLQ 포함), SSM 파라미터를 만든다. 여러 번 실행해도 안전하다.
+  # 자원 이름은 .env의 LOCAL_NAME_PREFIX로 만든다. ingest, worker가 쓰는 이름과 같은 값이어야 한다.
   moto-init:
     profiles: ["ingest"]
     image: amazon/aws-cli:2.39.6
@@ -66,6 +72,7 @@ services:
       - moto
     environment:
       <<: *aws-local
+      LOCAL_NAME_PREFIX: ${LOCAL_NAME_PREFIX:?.env에 LOCAL_NAME_PREFIX를 설정한다}
       DB_PASSWORD: ${DB_PASSWORD:-}
       LOCAL_WEBHOOK_SECRET: ${LOCAL_WEBHOOK_SECRET:-}
     entrypoint: ["/bin/sh", "/init/init-aws.sh"]
@@ -83,14 +90,15 @@ services:
         condition: service_completed_successfully
     environment:
       <<: *aws-local
-      WEBHOOK_SECRET_PARAM: /reposcope/webhook-secret
-      RAW_BUCKET: reposcope-raw-events
-      QUEUE_URL: http://moto:5000/123456789012/reposcope-events
+      WEBHOOK_SECRET_PARAM: /${LOCAL_NAME_PREFIX:?.env에 LOCAL_NAME_PREFIX를 설정한다}/webhook-secret
+      RAW_BUCKET: ${LOCAL_NAME_PREFIX}-raw-events
+      QUEUE_URL: http://moto:5000/123456789012/${LOCAL_NAME_PREFIX}-events
     ports:
       - "127.0.0.1:9000:8080"
 
   # SQS 메시지를 읽어 S3 원본을 가져오고 수집 테이블에 저장한다. 시작할 때 backend/migrations를 적용한다.
-  # App 키 파일을 마운트하지 않으면 GitHub 연동만 꺼지고 정상 동작한다.
+  # .env의 GITHUB_APP_PRIVATE_KEY_FILE에 PEM 파일 경로를 쓰면 읽기 전용으로 넣는다.
+  # 비워 두면 빈 파일(/dev/null)이 들어가 GitHub 연동만 꺼지고 정상 동작한다.
   worker:
     profiles: ["ingest"]
     build:
@@ -102,20 +110,19 @@ services:
       moto-init:
         condition: service_completed_successfully
     environment:
-      <<: *aws-local
-      DB_HOST: postgres
-      DB_PORT: "5432"
-      DB_NAME: ${DB_NAME:-reposcope}
-      DB_USER: ${DB_USER:-reposcope}
-      DB_PASSWORD: ${DB_PASSWORD:?.env에 DB_PASSWORD를 설정한다}
-      DB_SSLMODE: disable
+      <<: [*aws-local, *db]
       INGEST_SCHEMA: ${INGEST_SCHEMA:-public}
       CAPSTONE_SCHEMA: ${CAPSTONE_SCHEMA:-capstone}
-      QUEUE_URL: http://moto:5000/123456789012/reposcope-events
-      RAW_BUCKET: reposcope-raw-events
+      QUEUE_URL: http://moto:5000/123456789012/${LOCAL_NAME_PREFIX:?.env에 LOCAL_NAME_PREFIX를 설정한다}-events
+      RAW_BUCKET: ${LOCAL_NAME_PREFIX}-raw-events
       GITHUB_APP_ID: ${GITHUB_APP_ID:-}
       GITHUB_APP_PRIVATE_KEY_FILE: /run/secrets/github-app-key
       APP_VERSION: ${APP_VERSION:-local}
+    volumes:
+      - type: bind
+        source: ${GITHUB_APP_PRIVATE_KEY_FILE:-/dev/null}
+        target: /run/secrets/github-app-key
+        read_only: true
     restart: unless-stopped
 
 volumes:
