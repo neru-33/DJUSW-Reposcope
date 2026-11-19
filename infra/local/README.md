@@ -46,6 +46,47 @@ docker compose --env-file .env -f infra/local/compose.yml --profile ingest up -d
 | 수신 함수 상태(수집) | `curl -i http://localhost:9000/health` | `200` |
 | worker 시작(수집) | `docker compose --env-file .env -f infra/local/compose.yml --profile ingest logs worker` | `worker_started` |
 
+## 수신에서 저장까지 시험
+
+서명한 샘플 이벤트를 수신 함수(`ingest`)에 보내 S3, SQS, worker를 거쳐 `activities`까지 저장되는 흐름을 확인한다. 수집 구성을 시작한 상태에서 저장소 루트의 Git Bash로 실행한다. 샘플 이벤트는 `backend/worker/tests/fixtures/github/`에 있다.
+
+수신 함수를 거치지 않고 SQS 메시지를 직접 넣는 시험은 [worker 안내](../../backend/worker/README.md)에 있다.
+
+### 준비
+
+아래 함수를 같은 Git Bash 창에서 한 번 정의한다. 서명 비밀값은 `.env`에서 읽어 환경 변수로만 넘기며 화면에 출력하지 않는다.
+
+```bash
+export MSYS_NO_PATHCONV=1
+C="docker compose --env-file .env -f infra/local/compose.yml --profile ingest"
+export WEBHOOK_SECRET="$(grep '^LOCAL_WEBHOOK_SECRET=' .env | cut -d= -f2-)"
+
+psql_() { $C exec -T postgres sh -c "psql -qAt -U \"\$POSTGRES_USER\" -d \"\$POSTGRES_DB\" -c \"$1\""; }
+aws_()  { $C run --rm --no-deps --entrypoint aws moto-init "$@"; }
+send()  {  # fixture 이름, 이벤트, delivery ID, [--bad-signature]
+  docker run --rm --network reposcope-local_default -e WEBHOOK_SECRET -v "$PWD:/src:ro" python:3.13-slim \
+    python /src/webhook/tools/send_test_webhook.py http://ingest:8080/webhook \
+    "/src/backend/worker/tests/fixtures/github/$1.json" --event "$2" --delivery "$3" $4
+}
+```
+
+PC에 Python이 있으면 `WEBHOOK_SECRET=<값> python webhook/tools/send_test_webhook.py http://localhost:9000/webhook <payload.json> --event <이벤트> --delivery <ID>`로 바로 보내도 된다.
+
+### 시험
+
+worker가 큐를 읽는 데 몇 초 걸리므로 확인은 보낸 뒤 5~10초 기다렸다가 한다.
+
+| 확인 | 보내는 것 | 기대 결과 |
+|---|---|---|
+| 저장 | `send installation.created installation d-install` 후 `send push push d-push` | 둘 다 `202`. `psql_ "SELECT event, status FROM processed_deliveries ORDER BY received_at"`에 두 건이 `PROCESSED`, `psql_ "SELECT kind, count(*) FROM activities GROUP BY kind"`가 `COMMIT\|2` |
+| 중복 | 같은 delivery로 `send push push d-push`를 다시 보낸다 | `202`. `COMMIT` 개수가 그대로 `2`, worker 로그에 `"result": "DUPLICATE"` |
+| 서명 오류 | `send push push d-bad --bad-signature` | `401`. `psql_ "SELECT count(*) FROM processed_deliveries WHERE delivery_id='d-bad'"`가 `0`이고 `aws_ s3 ls s3://reposcope-raw-events --recursive`에 `d-bad` 파일이 없다 |
+
+- `push`는 먼저 `installation.created`로 저장소를 연결(LINKED)해야 저장된다. 연결되지 않은 저장소의 활동은 저장하지 않는다.
+- 중복을 다시 보내면 수신 함수는 같은 S3 키에 덮어쓰고 메시지를 큐에 다시 넣는다. 중복은 worker가 `processed_deliveries`로 걸러낸다.
+- 서명이 틀린 요청은 수신 함수가 `401`로 끝내므로 S3와 SQS에 아무것도 남지 않는다.
+- 같은 이벤트를 처음부터 다시 시험하려면 `down -v`로 DB를 비우고 `up`을 다시 실행한다. moto는 재시작하면 S3와 큐도 비워진다.
+
 ## 접속 주소
 
 | 대상 | 주소 | 비고 |
