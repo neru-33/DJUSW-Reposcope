@@ -64,7 +64,8 @@ services:
       - "127.0.0.1:4566:5000"
 
   # moto가 뜬 뒤 S3 버킷, SQS 큐(DLQ 포함), SSM 파라미터를 만든다. 여러 번 실행해도 안전하다.
-  # 자원 이름은 .env의 LOCAL_NAME_PREFIX로 만든다. ingest, worker가 쓰는 이름과 같은 값이어야 한다.
+  # 자원 이름은 .env의 LOCAL_NAME_PREFIX로 만들고, ingest와 worker도 같은 값을 쓴다.
+  # compose는 프로필과 관계없이 모든 변수를 채우므로 값 확인은 init-aws.sh가 한다. 값이 없으면 moto-init이 멈추고 ingest, worker도 시작하지 않는다.
   moto-init:
     profiles: ["ingest"]
     image: amazon/aws-cli:2.39.6
@@ -72,7 +73,7 @@ services:
       - moto
     environment:
       <<: *aws-local
-      LOCAL_NAME_PREFIX: ${LOCAL_NAME_PREFIX:?.env에 LOCAL_NAME_PREFIX를 설정한다}
+      LOCAL_NAME_PREFIX: ${LOCAL_NAME_PREFIX:-}
       DB_PASSWORD: ${DB_PASSWORD:-}
       LOCAL_WEBHOOK_SECRET: ${LOCAL_WEBHOOK_SECRET:-}
     entrypoint: ["/bin/sh", "/init/init-aws.sh"]
@@ -90,9 +91,9 @@ services:
         condition: service_completed_successfully
     environment:
       <<: *aws-local
-      WEBHOOK_SECRET_PARAM: /${LOCAL_NAME_PREFIX:?.env에 LOCAL_NAME_PREFIX를 설정한다}/webhook-secret
-      RAW_BUCKET: ${LOCAL_NAME_PREFIX}-raw-events
-      QUEUE_URL: http://moto:5000/123456789012/${LOCAL_NAME_PREFIX}-events
+      WEBHOOK_SECRET_PARAM: /${LOCAL_NAME_PREFIX:-}/webhook-secret
+      RAW_BUCKET: ${LOCAL_NAME_PREFIX:-}-raw-events
+      QUEUE_URL: http://moto:5000/123456789012/${LOCAL_NAME_PREFIX:-}-events
     ports:
       - "127.0.0.1:9000:8080"
 
@@ -113,8 +114,8 @@ services:
       <<: [*aws-local, *db]
       INGEST_SCHEMA: ${INGEST_SCHEMA:-public}
       CAPSTONE_SCHEMA: ${CAPSTONE_SCHEMA:-capstone}
-      QUEUE_URL: http://moto:5000/123456789012/${LOCAL_NAME_PREFIX:?.env에 LOCAL_NAME_PREFIX를 설정한다}-events
-      RAW_BUCKET: ${LOCAL_NAME_PREFIX}-raw-events
+      QUEUE_URL: http://moto:5000/123456789012/${LOCAL_NAME_PREFIX:-}-events
+      RAW_BUCKET: ${LOCAL_NAME_PREFIX:-}-raw-events
       GITHUB_APP_ID: ${GITHUB_APP_ID:-}
       GITHUB_APP_PRIVATE_KEY_FILE: /run/secrets/github-app-key
       APP_VERSION: ${APP_VERSION:-local}
