@@ -53,7 +53,8 @@ resource "cloudflare_zone_setting" "always_use_https" {
   value      = "on"
 }
 
-# 무료 플랜은 요청 제한 규칙을 1개 쓸 수 있다. 관리자 로그인에 IP당 10초 10회를 넘으면 10초 차단한다.
+# 무료 플랜은 요청 제한 규칙을 1개 쓸 수 있고, 규칙 조건에는 경로만 쓸 수 있다(메서드는 Business부터).
+# characteristics의 cf.colo.id는 필수이다. 관리자 로그인에 IP당 10초 10회를 넘으면 10초 차단한다.
 resource "cloudflare_ruleset" "rate_limit" {
   zone_id     = var.zone_id
   name        = "${var.name_prefix}-rate-limit"
@@ -63,12 +64,12 @@ resource "cloudflare_ruleset" "rate_limit" {
 
   rules = [
     {
-      description = "POST /auth/admin/login: 10 requests per 10s per IP"
+      description = "/auth/admin/login: 10 requests per 10s per IP"
       action      = "block"
       enabled     = true
-      expression  = "(http.request.method eq \"POST\" and http.request.uri.path eq \"/auth/admin/login\")"
+      expression  = "(http.request.uri.path eq \"/auth/admin/login\")"
       ratelimit = {
-        characteristics     = ["ip.src"]
+        characteristics     = ["cf.colo.id", "ip.src"]
         period              = 10
         requests_per_period = 10
         mitigation_timeout  = 10
