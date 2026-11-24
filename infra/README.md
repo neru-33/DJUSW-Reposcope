@@ -83,6 +83,29 @@ EC2 역할에는 GitHub App 키를 읽는 권한이 있다. 인스턴스 메타�
 - api와 cloudflared 컨테이너는 배포 설정에서 IMDS 접근을 막는다.
 - api가 쓰는 비밀값(DB 비밀번호, GitHub Client secret)은 컨테이너가 직접 읽지 않는다. 배포 스크립트가 Parameter Store에서 읽어 환경 변수로 넘긴다.
 
+### 운영 배포 설정
+
+`infra/deploy/compose.yml`이 EC2에서 api와 `cloudflared`를 실행한다. worker와 배포 자동화(CD)는 T-49에서 추가한다.
+
+| 항목 | 내용 |
+|---|---|
+| api | `API_IMAGE`로 받은 이미지. 8080은 호스트에 열지 않고 `expose`만 한다 |
+| cloudflared | Cloudflare로 먼저 연결해 터널을 만든다. 요청은 `http://api:8080`으로 넘긴다. 자동으로 다시 시작한다 |
+| api 환경 변수 | `SESSION_COOKIE_SECURE=true`, `CORS_ALLOWED_ORIGIN`과 `FRONTEND_URL`은 `https://www.eclipse-sync.com` |
+| 비밀값 | `DB_PASSWORD`, `TUNNEL_TOKEN`은 파일에 쓰지 않는다. 배포 스크립트가 Parameter Store에서 읽어 환경 변수로 넘긴다 |
+| 터널 토큰 | Terraform이 만들지 않는다. 운영자가 Cloudflare 대시보드에서 복사해 Parameter Store(SecureString)에 넣는다 |
+
+`CORS_ALLOWED_ORIGIN`과 `FRONTEND_URL`은 api가 해당 환경 변수를 읽는 PR(#42)이 병합된 뒤에 효과가 있다.
+
+**IMDS 차단**: api와 `cloudflared`는 고정 대역(`172.28.0.0/24`)의 `edge` 네트워크만 쓴다. `infra/deploy/block-imds.sh`가 이 대역에서 `169.254.169.254`로 가는 요청을 막는다. 재부팅하면 규칙이 사라지므로 compose를 띄우기 전에 매번 실행한다. worker는 EC2 역할이 필요하므로 이 네트워크에 넣지 않는다.
+
+```bash
+sudo sh infra/deploy/block-imds.sh
+docker compose -f infra/deploy/compose.yml up -d
+```
+
+문법만 확인하려면 값을 임시로 채워 `docker compose -f infra/deploy/compose.yml config`를 실행한다.
+
 ### 종료할 때
 
 1. `pg_dump`로 DB를 따로 보관한다. 종료할 때 최종 스냅샷을 만들지 않는다.
