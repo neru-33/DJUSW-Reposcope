@@ -17,7 +17,7 @@ AWS 자원은 Terraform으로만 만들고 바꾼다. `terraform apply`는 infra
 | `modules/secrets` | Parameter Store 비밀값 껍데기(실제 값은 Terraform 밖에서 넣는다) |
 | `modules/data` | RDS PostgreSQL |
 | `modules/ingest` | S3 원본 버킷, SQS와 DLQ, 수신 Lambda, API Gateway, 알람 |
-| `modules/app` | EC2, 고정 IP, IAM 역할 |
+| `modules/app` | EC2, IAM 역할 |
 | `modules/cost` | 예산 알림 |
 
 ### 이름 규칙
@@ -80,7 +80,7 @@ AWS 자원은 Terraform으로만 만들고 바꾼다. `terraform apply`는 infra
 
 EC2 역할에는 GitHub App 키를 읽는 권한이 있다. 인스턴스 메타데이터의 hop limit이 2여서 EC2 위의 컨테이너는 이 역할의 자격 증명을 받을 수 있다. 이 설정은 worker 컨테이너용이다.
 
-- api와 Caddy 컨테이너는 배포 설정에서 IMDS 접근을 막는다.
+- api와 cloudflared 컨테이너는 배포 설정에서 IMDS 접근을 막는다.
 - api가 쓰는 비밀값(DB 비밀번호, GitHub Client secret)은 컨테이너가 직접 읽지 않는다. 배포 스크립트가 Parameter Store에서 읽어 환경 변수로 넘긴다.
 
 ### 종료할 때
@@ -101,7 +101,7 @@ state 버킷(`bootstrap/`)은 삭제 방지가 걸려 있어 함께 지워지지
 | RDS db.t4g.micro | 약 19 |
 | RDS 저장소 gp3 20GB | 약 3 |
 | EC2 루트 볼륨 gp3 20GB | 약 2 |
-| 고정 IP(퍼블릭 IPv4) | 약 4 |
+| 공인 IPv4(자동 할당) | 약 4 |
 | S3, SQS, Lambda, API Gateway, Parameter Store, SNS, 예산 | 1 미만(트래픽이 적을 때) |
 | **합계** | **약 47(약 6.6만 원)** |
 
