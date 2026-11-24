@@ -34,6 +34,32 @@ AWS 자원은 Terraform으로만 만들고 바꾼다. `terraform apply`는 infra
 
 아래 설명의 `/reposcope/...` 경로는 기본값을 쓴 예시다.
 
+### Cloudflare 준비 (Terraform 밖)
+
+`api.eclipse-sync.com`은 Cloudflare Tunnel로 받는다([결정 기록](../docs/decisions/0001-deploy-domain-tls.md)). 아래는 Terraform이 하지 않고 사람이 한 번 하는 일이다.
+
+1. 도메인(`eclipse-sync.com`)을 Cloudflare에 추가하고(Free 플랜) 도메인을 산 곳에서 네임서버를 Cloudflare가 알려 준 두 개로 바꾼다. 상태가 **Active**가 될 때까지 기다린다.
+2. 도메인 Overview의 **Zone ID**와 **Account ID**를 `terraform.tfvars`에 넣는다(`cloudflare_zone_id`, `cloudflare_account_id`).
+3. **DNSSEC**을 켠다. DNS → Settings → DNSSEC에서 켜고, 도메인을 산 곳에 화면의 DS 레코드를 등록한다. 네임서버 변경이 끝난 뒤에 한다. Cloudflare Registrar에서 샀다면 DS 레코드가 자동 등록된다.
+4. **API 토큰**을 발급한다. My Profile → API Tokens → Create Custom Token에서 아래 권한만 주고, 이 도메인과 이 계정으로 제한한다. Global API Key는 쓰지 않는다.
+
+   | 범위 | 항목 | 권한 |
+   |---|---|---|
+   | Zone | DNS | Edit |
+   | Zone | Zone Settings | Edit |
+   | Zone | Zone WAF | Edit |
+   | Account | Cloudflare Tunnel | Edit |
+
+5. 토큰은 환경 변수로만 넘긴다. 파일과 tfvars에 쓰지 않는다. `plan`, `apply`, `destroy`를 실행할 때마다 필요하므로 새 터미널에서는 다시 설정한다.
+
+   ```powershell
+   $env:CLOUDFLARE_API_TOKEN = "<토큰>"
+   ```
+
+   ```bash
+   export CLOUDFLARE_API_TOKEN="<토큰>"
+   ```
+
 ### 처음 만들 때
 
 1. state 버킷을 만든다.
@@ -51,7 +77,7 @@ AWS 자원은 Terraform으로만 만들고 바꾼다. `terraform apply`는 infra
    terraform init -backend-config="bucket=<state 버킷 이름>"
    ```
 
-3. `terraform.tfvars.example`을 `terraform.tfvars`로 복사해 `alert_email`을 채운다.
+3. `terraform.tfvars.example`을 `terraform.tfvars`로 복사해 `alert_email`, `cloudflare_zone_id`, `cloudflare_account_id`를 채운다.
 4. RDS 비밀번호를 환경 변수로 넘긴다. Parameter Store의 `/reposcope/db-password`에 넣을 값과 같아야 하며 16자 이상이다. `plan`, `apply`, `destroy`를 실행할 때마다 필요하므로, 새 터미널에서는 다시 설정한다.
 
    ```powershell
@@ -75,6 +101,28 @@ AWS 자원은 Terraform으로만 만들고 바꾼다. `terraform apply`는 infra
 8. `terraform output webhook_url` 값을 GitHub App의 Webhook URL에 넣는다([GitHub App 설정](../docs/github-app.md)).
 
 수신 Lambda 코드는 `webhook/src/`에 있고, apply할 때 이 디렉터리를 압축해 배포한다. 테스트와 로컬 실행 파일은 배포 파일에 들어가지 않는다.
+
+### 터널 토큰 넣기
+
+터널 토큰은 Terraform이 만들지도 읽지도 않아 state에 남지 않는다. apply가 끝난 뒤 운영자가 직접 넣는다.
+
+1. `terraform output tunnel_id`로 터널 ID를 확인한다.
+2. Cloudflare 대시보드 → Zero Trust → Networks → Tunnels에서 그 터널을 열고 **Install and run** 화면의 토큰(`--token` 뒤의 긴 문자열)을 복사한다.
+3. Parameter Store에 넣는다. 배포 스크립트가 이 값을 읽어 `cloudflared`에 `TUNNEL_TOKEN`으로 넘긴다.
+
+   ```bash
+   aws ssm put-parameter --name /reposcope/tunnel-token --type SecureString --overwrite --value "<토큰>"
+   ```
+
+4. apply 뒤 state에 터널 비밀값이 남지 않았는지 확인한다. 아래 결과에 `tunnel_secret`이 나오면 안 된다.
+
+   ```bash
+   terraform state pull | grep -i -E "tunnel_secret|token"
+   ```
+
+   비밀값이 남으면 Terraform으로 터널을 만들지 않는다. 대시보드에서 터널만 만들고 그 ID를 `terraform.tfvars`의 `cloudflare_tunnel_id`에 넣은 뒤 다시 apply한다. 공개 주소와 DNS는 그대로 Terraform이 만든다.
+
+토큰을 바꾸면(재발급) 같은 명령으로 다시 넣고 EC2에서 `cloudflared`를 다시 시작한다.
 
 ### 컨테이너와 EC2 역할
 

@@ -36,3 +36,8 @@ output "raw_bucket_name" {
 output "app_instance_id" {
   value = module.app.instance_id
 }
+
+output "tunnel_id" {
+  description = "Cloudflare 대시보드에서 토큰을 복사할 터널의 ID"
+  value       = module.cloudflare.tunnel_id
+}

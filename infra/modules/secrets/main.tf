@@ -12,6 +12,7 @@ locals {
     "github-app-key"       = "GitHub App private key PEM (worker)"
     "github-client-secret" = "GitHub App OAuth client secret (API)"
     "db-password"          = "RDS master password (API, worker)"
+    "tunnel-token"         = "Cloudflare Tunnel token (cloudflared)"
   }
 }
 
