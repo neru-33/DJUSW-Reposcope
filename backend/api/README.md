@@ -6,6 +6,10 @@ Java 21과 PostgreSQL을 사용한다. 환경 변수를 설정한 뒤 `./gradlew
 
 세션 쿠키의 `Secure` 속성은 `SESSION_COOKIE_SECURE` 환경 변수로 설정한다. 기본값은 `false`이며 HTTPS 배포 환경에서는 `true`로 설정한다.
 
+`CORS_ALLOWED_ORIGIN`은 자격 증명을 허용할 화면 출처 하나이며 기본값은 `http://localhost:5173`이다. 운영 환경에서는 `https://www.eclipse-sync.com`으로 설정한다. `FRONTEND_URL`은 로그인 후 이동할 화면 주소로, 기본값은 `http://localhost:5173`이며 운영 환경에서는 `https://www.eclipse-sync.com`으로 설정한다. 실제 GitHub 로그인 콜백은 아직 구현되지 않았으므로 콜백 구현 시 이 설정과 상대 경로 `next` 검증을 연결해야 한다.
+
+사용자 IP는 신뢰할 수 있는 프록시가 전달한 `CF-Connecting-IP`에서 읽는다. 운영 API는 Cloudflare Tunnel을 거치지 않은 외부 요청을 받지 않아야 한다.
+
 PostgreSQL 연결을 위해 다음 환경 변수를 실행 환경에 설정한다.
 
 | 변수 | 설명 | 예시 |
