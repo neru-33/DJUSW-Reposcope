@@ -85,3 +85,9 @@ variable "cloudflare_tunnel_id" {
   type        = string
   default     = null
 }
+
+variable "web_force_destroy" {
+  description = "인프라를 종료할 때만 true. 웹 버킷에 파일이 있어도 삭제한다"
+  type        = bool
+  default     = false
+}

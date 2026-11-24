@@ -43,7 +43,7 @@ Repository permissions만 사용하고 모두 읽기 전용이다. Organization 
 | Expire user authorization tokens | 사용 |
 | Request user authorization during installation | 사용 안 함 |
 | Device Flow | 사용 안 함 |
-| Callback URL | 경로는 `/auth/github/callback`, 도메인은 배포 주소가 정해진 뒤 설정 |
+| Callback URL | `https://api.eclipse-sync.com/auth/github/callback` (api는 Cloudflare Tunnel로 받는다. [결정 기록](decisions/0001-deploy-domain-tls.md)) |
 | Setup URL | 배포 주소가 정해진 뒤 설정 |
 
 ## Webhook

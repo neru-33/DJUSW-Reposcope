@@ -18,6 +18,8 @@ AWS 자원은 Terraform으로만 만들고 바꾼다. `terraform apply`는 infra
 | `modules/data` | RDS PostgreSQL |
 | `modules/ingest` | S3 원본 버킷, SQS와 DLQ, 수신 Lambda, API Gateway, 알람 |
 | `modules/app` | EC2, IAM 역할 |
+| `modules/cloudflare` | 터널, api 공개 주소와 DNS, Always Use HTTPS, 요청 제한 |
+| `modules/web` | 웹 버킷(S3), CloudFront, ACM 인증서(us-east-1), `www`와 인증서 확인용 DNS |
 | `modules/cost` | 예산 알림 |
 
 ### 이름 규칙
@@ -124,6 +126,27 @@ AWS 자원은 Terraform으로만 만들고 바꾼다. `terraform apply`는 infra
 
 토큰을 바꾸면(재발급) 같은 명령으로 다시 넣고 EC2에서 `cloudflared`를 다시 시작한다.
 
+### 화면(www) 확인
+
+`modules/web`은 웹 버킷과 CloudFront, 인증서, `www` 레코드까지만 만든다. 화면 파일 업로드와 캐시 무효화는 배포 자동화(#75)에서 하므로, apply 직후에는 버킷이 비어 있어 `www`가 오류를 돌려주는 것이 정상이다. 처음 확인할 때는 빌드를 직접 올린다.
+
+```bash
+cd frontend && npm ci && npm run build
+aws s3 sync dist "s3://$(terraform -chdir=../infra/envs/prod output -raw web_bucket_name)" --delete
+aws cloudfront create-invalidation --distribution-id "$(terraform -chdir=../infra/envs/prod output -raw web_distribution_id)" --paths "/*"
+```
+
+apply 뒤 아래를 확인한다.
+
+| 확인 | 기대 결과 |
+|---|---|
+| `curl -I https://www.eclipse-sync.com` | `200`, `content-type: text/html` |
+| `curl -I http://www.eclipse-sync.com` | `301`로 HTTPS로 이동 |
+| `curl -I https://www.eclipse-sync.com/<없는 경로>` | `200`(`index.html`). 브라우저에서 화면 안의 주소를 새로고침해도 화면이 열린다 |
+| 웹 버킷 주소로 직접 접근 | `403`(버킷은 CloudFront만 읽는다) |
+
+CloudFront 배포는 만드는 데 5분에서 15분이 걸린다. 인증서 확인용 레코드는 Cloudflare에 만들어지므로 같은 터미널에 `CLOUDFLARE_API_TOKEN`이 설정되어 있어야 한다.
+
 ### 컨테이너와 EC2 역할
 
 EC2 역할에는 GitHub App 키를 읽는 권한이 있다. 인스턴스 메타데이터의 hop limit이 2여서 EC2 위의 컨테이너는 이 역할의 자격 증명을 받을 수 있다. 이 설정은 worker 컨테이너용이다.
@@ -160,7 +183,7 @@ docker compose -f infra/deploy/compose.yml up -d
 ### 종료할 때
 
 1. `pg_dump`로 DB를 따로 보관한다. 종료할 때 최종 스냅샷을 만들지 않는다.
-2. `rds_deletion_protection = false`, `raw_force_destroy = true`로 바꿔 apply한다.
+2. `rds_deletion_protection = false`, `raw_force_destroy = true`, `web_force_destroy = true`로 바꿔 apply한다.
 3. `terraform destroy`를 실행한다.
 
 state 버킷(`bootstrap/`)은 삭제 방지가 걸려 있어 함께 지워지지 않는다.
@@ -176,7 +199,7 @@ state 버킷(`bootstrap/`)은 삭제 방지가 걸려 있어 함께 지워지지
 | RDS 저장소 gp3 20GB | 약 3 |
 | EC2 루트 볼륨 gp3 20GB | 약 2 |
 | 공인 IPv4(자동 할당) | 약 4 |
-| S3, SQS, Lambda, API Gateway, Parameter Store, SNS, 예산 | 1 미만(트래픽이 적을 때) |
+| S3, SQS, Lambda, API Gateway, Parameter Store, SNS, 예산, CloudFront, ACM | 1 미만(트래픽이 적을 때) |
 | **합계** | **약 47(약 6.6만 원)** |
 
 프리 티어 적용 여부는 계정의 요금제에 따라 다르므로 apply 전에 콘솔의 Billing에서 확인한다.

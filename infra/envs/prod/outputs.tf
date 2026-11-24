@@ -41,3 +41,17 @@ output "tunnel_id" {
   description = "Cloudflare 대시보드에서 토큰을 복사할 터널의 ID"
   value       = module.cloudflare.tunnel_id
 }
+
+output "www_url" {
+  value = module.web.www_url
+}
+
+output "web_bucket_name" {
+  description = "화면 파일을 올리는 웹 버킷"
+  value       = module.web.bucket_name
+}
+
+output "web_distribution_id" {
+  description = "캐시 무효화에 쓰는 CloudFront 배포 ID"
+  value       = module.web.distribution_id
+}
