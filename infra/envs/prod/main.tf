@@ -82,3 +82,17 @@ module "cloudflare" {
   name_prefix = var.name_prefix
   tunnel_id   = var.cloudflare_tunnel_id
 }
+
+module "web" {
+  source = "../../modules/web"
+
+  providers = {
+    aws           = aws
+    aws.us_east_1 = aws.us_east_1
+  }
+
+  name_prefix   = var.name_prefix
+  domain        = var.domain
+  zone_id       = var.cloudflare_zone_id
+  force_destroy = var.web_force_destroy
+}

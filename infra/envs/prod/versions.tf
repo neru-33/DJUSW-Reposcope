@@ -29,3 +29,15 @@ provider "aws" {
 
 # 토큰은 환경 변수 CLOUDFLARE_API_TOKEN으로만 받는다. 코드와 tfvars에는 쓰지 않는다.
 provider "cloudflare" {}
+
+# CloudFront용 인증서는 us-east-1에 있어야 한다.
+provider "aws" {
+  alias  = "us_east_1"
+  region = "us-east-1"
+
+  default_tags {
+    tags = {
+      project = var.name_prefix
+    }
+  }
+}
