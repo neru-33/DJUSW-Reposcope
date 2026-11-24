@@ -19,11 +19,11 @@ moto는 S3, SQS, SSM Parameter Store를 흉내 내는 오픈소스 AWS 에뮬레
 저장소 루트에서 실행한다.
 
 1. `.env.example`을 `.env`로 복사한다.
-2. `.env`에서 `DB_PASSWORD`에 로컬에서만 쓰는 임의 값을 입력한다. `DB_NAME`, `DB_USER`는 compose와 API에 기본값이 없으므로 `.env.example`의 값(`reposcope`)을 그대로 두거나 원하는 값으로 바꾼다. 비어 있으면 시작하지 않는다. 수집 구성을 쓰면 `LOCAL_WEBHOOK_SECRET`에 32자 이상의 임의 값을 입력하고, `LOCAL_NAME_PREFIX`(moto 자원 이름의 접두어)는 `.env.example`의 값을 그대로 둔다. 수신 함수는 32자보다 짧은 비밀값을 설정되지 않은 것으로 보고 `503`으로 응답한다. `.env`는 커밋하지 않는다.
+2. `.env`에서 `DB_PASSWORD`에 로컬에서만 쓰는 임의 값을 입력한다. `DB_NAME`, `DB_USER`는 compose와 API에 기본값이 없으므로 `.env.example`의 값(`reposcope`)을 그대로 두거나 원하는 값으로 바꾼다. 비어 있으면 시작하지 않는다. `LOCAL_NAME_PREFIX`(moto 자원 이름의 접두어)는 수집 구성을 쓰지 않아도 compose가 파일 전체의 변수를 먼저 채우므로 필요하다. `.env.example`의 값을 그대로 둔다. 수집 구성을 쓰면 `LOCAL_WEBHOOK_SECRET`에 32자 이상의 임의 값을 입력한다. 수신 함수는 32자보다 짧은 비밀값을 설정되지 않은 것으로 보고 `503`으로 응답한다. `.env`는 커밋하지 않는다.
 3. 수집 구성에서 GitHub App 연동까지 시험하려면 `.env`의 `GITHUB_APP_ID`와 `GITHUB_APP_PRIVATE_KEY_FILE`(내 컴퓨터에 있는 PEM 파일의 경로)을 입력한다. 키 파일은 worker의 `/run/secrets/github-app-key`에 읽기 전용으로 들어간다. 비워 두면 GitHub 연동만 꺼지고 정상 시작한다. 키 파일은 저장소에 올리지 않는다.
 4. Docker Desktop을 실행해 둔다.
 
-`.env`를 이전에 만든 팀원은 `DB_USER`가 비어 있으면 시작하지 않고, `LOCAL_NAME_PREFIX`가 없으면 수집 구성이 시작하지 않는다. `.env.example`의 새 항목을 `.env`에 옮긴다. `DB_NAME`, `DB_USER`를 바꿨다면 기존 DB 볼륨에는 이전 값이 남아 있으므로 `down -v`로 지우고 다시 시작한다.
+`.env`를 이전에 만든 팀원은 `DB_USER`가 비어 있거나 `LOCAL_NAME_PREFIX`가 없으면 기본 구성도 시작하지 않는다. `.env.example`의 새 항목을 `.env`에 옮긴다. `DB_NAME`, `DB_USER`를 바꿨다면 기존 DB 볼륨에는 이전 값이 남아 있으므로 `down -v`로 지우고 다시 시작한다.
 
 기본 구성:
 
