@@ -27,6 +27,7 @@ JSON
 # api와 cloudflared가 쓰는 edge 네트워크(172.28.0.0/24)에서 IMDS(169.254.169.254)로 가는 요청을 막는다.
 # EC2 역할에는 GitHub App 키를 읽는 권한이 있다. iptables 규칙은 재부팅하면 사라지므로
 # 부팅할 때마다 docker.service보다 먼저 DOCKER-USER 체인에 규칙을 넣는다. Docker는 이미 있는 DOCKER-USER 규칙을 지우지 않는다.
+# 규칙을 넣지 못하면 docker.service도 시작하지 않는다(RequiredBy). 차단 없이 컨테이너가 뜨는 것보다 멈추는 쪽을 택한다.
 cat > /usr/local/sbin/${name_prefix}-block-imds.sh <<'SH'
 #!/bin/sh
 set -eu
@@ -53,6 +54,7 @@ ExecStart=/usr/local/sbin/${name_prefix}-block-imds.sh
 
 [Install]
 WantedBy=multi-user.target
+RequiredBy=docker.service
 UNIT
 systemctl daemon-reload
 systemctl enable --now ${name_prefix}-block-imds.service
