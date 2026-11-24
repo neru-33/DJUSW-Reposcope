@@ -28,7 +28,7 @@ resource "aws_subnet" "public_a" {
   cidr_block        = "10.0.1.0/24"
   availability_zone = local.az_a
 
-  # 자동으로 퍼블릭 IP를 주지 않는다. EC2의 퍼블릭 IP는 탄력적 IP 1개만 쓴다.
+  # 서브넷은 IP를 자동으로 주지 않는다. EC2 자원이 associate_public_ip_address로 공인 IP를 받는다.
   map_public_ip_on_launch = false
 
   tags = { Name = "${var.name_prefix}-public-a" }
@@ -71,25 +71,9 @@ resource "aws_route_table_association" "public_a" {
 
 resource "aws_security_group" "app" {
   name        = "${var.name_prefix}-app"
-  description = "EC2 app. HTTP 80 only from CloudFront when enabled. 8080 not exposed."
+  description = "EC2 app. No inbound rules except optional SSH."
   vpc_id      = aws_vpc.this.id
   tags        = { Name = "${var.name_prefix}-app" }
-}
-
-data "aws_ec2_managed_prefix_list" "cloudfront" {
-  count = var.allow_cloudfront_origin ? 1 : 0
-  name  = "com.amazonaws.global.cloudfront.origin-facing"
-}
-
-resource "aws_vpc_security_group_ingress_rule" "app_http_from_cloudfront" {
-  count = var.allow_cloudfront_origin ? 1 : 0
-
-  security_group_id = aws_security_group.app.id
-  description       = "HTTP from CloudFront origin-facing"
-  ip_protocol       = "tcp"
-  from_port         = 80
-  to_port           = 80
-  prefix_list_id    = data.aws_ec2_managed_prefix_list.cloudfront[0].id
 }
 
 # SSH는 기본으로 닫아 두고 SSM Session Manager로 접속한다.
