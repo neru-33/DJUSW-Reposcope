@@ -60,6 +60,7 @@ docker compose --env-file .env -f infra/local/compose.yml --profile ingest up -d
 export MSYS_NO_PATHCONV=1
 C="docker compose --env-file .env -f infra/local/compose.yml --profile ingest"
 export WEBHOOK_SECRET="$(grep '^LOCAL_WEBHOOK_SECRET=' .env | cut -d= -f2-)"
+P="$(grep '^LOCAL_NAME_PREFIX=' .env | cut -d= -f2-)"   # moto 자원 이름의 접두어
 
 psql_() { $C exec -T postgres sh -c "psql -qAt -U \"\$POSTGRES_USER\" -d \"\$POSTGRES_DB\" -c \"$1\""; }
 aws_()  { $C run --rm --no-deps --entrypoint aws moto-init "$@"; }
@@ -80,7 +81,7 @@ worker가 큐를 읽는 데 몇 초 걸리므로 확인은 보낸 뒤 5~10초 �
 |---|---|---|
 | 저장 | `send installation.created installation d-install` 후 `send push push d-push` | 둘 다 `202`. `psql_ "SELECT event, status FROM processed_deliveries ORDER BY received_at"`에 두 건이 `PROCESSED`, `psql_ "SELECT kind, count(*) FROM activities GROUP BY kind"`가 `COMMIT\|2` |
 | 중복 | 같은 delivery로 `send push push d-push`를 다시 보낸다 | `202`. `COMMIT` 개수가 그대로 `2`, worker 로그에 `"result": "DUPLICATE"` |
-| 서명 오류 | `send push push d-bad --bad-signature` | `401`. `psql_ "SELECT count(*) FROM processed_deliveries WHERE delivery_id='d-bad'"`가 `0`이고 `aws_ s3 ls s3://reposcope-raw-events --recursive`에 `d-bad` 파일이 없다 |
+| 서명 오류 | `send push push d-bad --bad-signature` | `401`. `psql_ "SELECT count(*) FROM processed_deliveries WHERE delivery_id='d-bad'"`가 `0`이고 `aws_ s3 ls s3://$P-raw-events --recursive`에 `d-bad` 파일이 없다 |
 
 - `push`는 먼저 `installation.created`로 저장소를 연결(LINKED)해야 저장된다. 연결되지 않은 저장소의 활동은 저장하지 않는다.
 - 중복을 다시 보내면 수신 함수는 같은 S3 키에 덮어쓰고 메시지를 큐에 다시 넣는다. 중복은 worker가 `processed_deliveries`로 걸러낸다.
