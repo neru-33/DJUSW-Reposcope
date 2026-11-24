@@ -111,7 +111,7 @@ EC2에는 인증서를 두지 않는다.
 ## 5. CORS, 쿠키, CSRF
 
 - 허용 출처는 `https://www.eclipse-sync.com` 하나이고 환경 변수로 받는다. 와일드카드(`*.eclipse-sync.com`)는 쓰지 않는다.
-- 요청의 `Origin`이 허용 출처와 정확히 같을 때만 그 값을 `Access-Control-Allow-Origin`으로 응답하고, `Access-Control-Allow-Credentials: true`와 `Vary: Origin`을 붙인다. 허용 헤더는 `Content-Type`, `X-CSRF-Token`이다.
+- 요청의 `Origin`이 허용 출처와 정확히 같을 때만 그 값을 `Access-Control-Allow-Origin`으로 응답하고 `Access-Control-Allow-Credentials: true`를 붙인다. 출처에 따라 응답이 달라지므로 허용하지 않은 출처에도 `Vary: Origin`을 붙인다. 허용 헤더는 `Content-Type`, `X-CSRF-Token`이다.
 - 쓰기 요청 앞에 오는 사전 요청(OPTIONS)은 쿠키 없이 오므로, 로그인 검사보다 먼저 CORS 처리에서 응답한다.
 - 세션 쿠키는 `api` 호스트 전용이고 `Secure`, `HttpOnly`, `SameSite=Lax`다. `www`와 `api`는 같은 사이트라 `Lax`로도 쿠키가 실린다.
 - CSRF는 공통 인증(#23)의 `X-CSRF-Token` 헤더 방식을 그대로 쓴다.
