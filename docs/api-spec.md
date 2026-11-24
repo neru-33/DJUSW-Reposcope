@@ -1,6 +1,6 @@
 # API 명세
 
-이 문서는 RepoScope 웹 화면과 Spring API 사이의 HTTP 계약을 정한다. 기능 번호는 [기능 명세](feature-spec.md), 화면 번호는 [화면 흐름](screen-flow.md), 테이블은 [데이터 모델](data-model.md)을 따른다. 여유 시 기능 R-11~R-13의 API는 구현할 때 추가한다.
+이 문서는 RepoScope 웹 화면과 Spring API 사이의 HTTP 계약을 정한다. 기능 번호는 [기능 명세](feature-spec.md), 화면 번호는 [화면 흐름](screen-flow.md), 테이블은 [데이터 모델](data-model.md)을 따른다. 확장 기능 R-11~R-13의 API는 구현할 때 추가한다.
 
 ## 1. 공통 규칙
 
@@ -463,11 +463,11 @@
 | 메서드 | 경로 | 권한 | 설명 |
 |---|---|---|---|
 | GET | `/api/admin/users` | `SUPER_ADMIN`, `ADMIN` | 목록 |
-| PATCH | `/api/admin/users/{id}` | `SUPER_ADMIN`, `ADMIN` | 학번, 이름, 학과 수정 |
+| PATCH | `/api/admin/users/{id}` | `SUPER_ADMIN`, `ADMIN` | 학번, 이름 수정 |
 | POST | `/api/admin/users/{id}/disable` | `SUPER_ADMIN`, `ADMIN` | 비활성화, `204` |
 | POST | `/api/admin/users/{id}/enable` | `SUPER_ADMIN`, `ADMIN` | 비활성화 해제, `204` |
 
-목록의 조회 조건은 `q`, `page`, `size`다. `q`는 이름, 학번, GitHub 로그인 이름을 검색한다.
+목록의 조회 조건은 `page`, `size`다. 이름, 학번, GitHub 로그인 이름으로 찾는 `q`는 확장 기능이다.
 
 ```json
 {
@@ -489,9 +489,11 @@
 }
 ```
 
-`PATCH` 본문은 `name`, `student_id`, `department` 중 바꿀 값만 받는다.
+`PATCH` 본문은 `name`, `student_id` 중 바꿀 값만 받는다. `department` 수정은 확장 기능이다.
 
 ## 12. 운영자 계정 (R-2)
+
+초기 완성에서는 화면 없이 이 API로 운영자 계정을 관리한다. 사용 방법은 운영 문서에 적는다.
 
 | 메서드 | 경로 | 권한 | 설명 |
 |---|---|---|---|

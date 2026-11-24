@@ -53,7 +53,7 @@
 | T-12 로컬 시험      | 기능 명세 S-1, S-2                      | `fixtures/github/`, `compose/local/`, `backend/worker/tests/`              |
 | T-22 과거 기록      | 기능 명세 S-3                           | `backend/worker/backfill.py`, `backend/worker/github.py`                   |
 | T-23 리뷰·병합 시각 | 기능 명세 S-2, 데이터 모델 `activities` | `backend/worker/activities.py`                                             |
-| T-46 누락 복구      | 기능 명세 S-3                           | `backend/worker/backfill.py`                                               |
+| T-60 누락 복구      | 기능 명세 S-3                           | `backend/worker/backfill.py`                                               |
 
 메시지 형식과 테이블 정의의 기준은 연계 프로젝트의 `docs/contracts/sqs-message.schema.json`, `docs/contracts/db-schema.sql`이다. 컨테이너 환경 변수와 권한 경계는 `docs/contracts/runtime.md`를 따른다.
 

@@ -89,7 +89,7 @@ describe('menusFor', () => {
     expect(labels('STUDENT')).toEqual(['둘러보기', '내 프로젝트'])
     expect(labels('PROFESSOR')).toEqual(['전체 프로젝트'])
     expect(labels('ADMIN')).toEqual(['전체 프로젝트', '사용자 관리'])
-    expect(labels('SUPER_ADMIN')).toEqual(['전체 프로젝트', '사용자 관리', '운영자 계정'])
+    expect(labels('SUPER_ADMIN')).toEqual(['전체 프로젝트', '사용자 관리'])
   })
 
   it('로그인하지 않았거나 가입 전이면 메뉴가 없다', () => {

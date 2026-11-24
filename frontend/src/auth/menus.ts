@@ -26,7 +26,6 @@ export function menusFor(me: Me | null): MenuItem[] {
       return [
         { label: '전체 프로젝트', path: '/admin/projects' },
         { label: '사용자 관리', path: '/admin/users' },
-        { label: '운영자 계정', path: '/admin/operators' },
       ]
     default:
       return []
