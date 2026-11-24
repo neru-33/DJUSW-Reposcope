@@ -36,7 +36,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-@SpringBootTest(properties = {"DB_USER=test", "DB_PASSWORD=test", "app.cors.allowed-origin=https://www.eclipse-sync.com"})
+@SpringBootTest(properties = {"DB_NAME=test", "DB_USER=test", "DB_PASSWORD=test", "app.cors.allowed-origin=https://www.eclipse-sync.com"})
 @Import(SecurityTests.TestEndpoints.class)
 class SecurityTests {
     @Autowired WebApplicationContext context;

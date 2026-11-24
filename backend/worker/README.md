@@ -3,8 +3,8 @@
 SQS 메시지를 읽어 S3 원본 payload를 가져오고, 수집 테이블에 멱등 upsert한다(기능 명세 S-2). Python 3.13, boto3, psycopg 3으로 구현했다.
 
 ```text
-SQS reposcope-events → worker → S3 reposcope-raw-events (원본) → PostgreSQL (INGEST_SCHEMA)
-                      └ 5회 실패 → reposcope-events-dlq
+SQS <접두어>-events → worker → S3 <접두어>-raw-events (원본) → PostgreSQL (INGEST_SCHEMA)
+                      └ 5회 실패 → <접두어>-events-dlq
 ```
 
 ## 원본
@@ -48,12 +48,12 @@ worker의 접속 `search_path`에는 `INGEST_SCHEMA`만 있으므로 `capstone` 
 | `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_SSLMODE` | ✔ | compose가 `.env` 값으로 넣는다 |
 | `INGEST_SCHEMA` | | 기본 `public`. 영문 소문자, 숫자, `_` |
 | `CAPSTONE_SCHEMA` | | 기본 `capstone`. 같은 이름을 막는 데만 쓴다 |
-| `QUEUE_URL` | ✔ | `http://moto:5000/123456789012/reposcope-events` |
-| `RAW_BUCKET` | ✔ | `reposcope-raw-events` |
+| `QUEUE_URL` | ✔ | `http://moto:5000/123456789012/<접두어>-events` (`<접두어>`는 `.env`의 `LOCAL_NAME_PREFIX`) |
+| `RAW_BUCKET` | ✔ | `<접두어>-raw-events` |
 | `AWS_REGION` | ✔ | `ap-northeast-2` |
 | `AWS_ENDPOINT_URL` | | 로컬만 `http://moto:5000`. AWS에서는 넣지 않는다 |
 | `GITHUB_APP_ID` | | 비우면 GitHub 연동을 끈다 |
-| `GITHUB_APP_PRIVATE_KEY_FILE` | | 기본 `/run/secrets/github-app-key`. 파일이 없거나 PEM이 아니면 GitHub 연동을 끈다 |
+| `GITHUB_APP_PRIVATE_KEY_FILE` | | 기본 `/run/secrets/github-app-key`. 로컬에서는 compose가 `.env`의 같은 이름 변수(내 컴퓨터의 PEM 경로)를 이 위치에 읽기 전용으로 넣고, 비워 두면 빈 파일이 들어간다. 파일이 비었거나 PEM이 아니면 GitHub 연동을 끈다 |
 | `APP_VERSION` | | 시작 로그에 남긴다 |
 
 GitHub 연동은 저장소 전체 선택(`all`)으로 설치했을 때 설치 저장소 목록을 조회하는 데 쓴다. 꺼져 있으면 payload에 들어 있는 저장소만 저장한다.
@@ -79,7 +79,7 @@ MSYS_NO_PATHCONV=1 docker run --rm --network reposcope-local_default \
   --env-file .env -e PYTHONDONTWRITEBYTECODE=1 \
   -v "$PWD:/src:ro" -w /src python:3.13-slim sh -c '
     pip install -q --root-user-action=ignore -r backend/worker/requirements.txt pytest==9.2.0 &&
-    WORKER_TEST_DB_DSN="postgresql://${DB_USER:-reposcope}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-reposcope}" \
+    WORKER_TEST_DB_DSN="postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}" \
     python -m pytest -v -p no:cacheprovider backend/worker/tests'
 ```
 
@@ -94,14 +94,15 @@ S3에 fixture를 올리고 SQS에 메시지를 넣어 수신 함수를 흉내 �
 ```bash
 export MSYS_NO_PATHCONV=1
 C="docker compose --env-file .env -f infra/local/compose.yml --profile ingest"
-Q=http://moto:5000/123456789012/reposcope-events
+P="$(grep '^LOCAL_NAME_PREFIX=' .env | cut -d= -f2-)"   # moto 자원 이름의 접두어
+Q=http://moto:5000/123456789012/$P-events
 aws_() { $C run --rm --no-deps -v "$PWD/backend/worker/tests/fixtures/github:/f:ro" --entrypoint aws moto-init "$@"; }
 psql_() { $C exec -T postgres sh -c "psql -qAt -U \"\$POSTGRES_USER\" -d \"\$POSTGRES_DB\" -c \"$1\""; }
 enqueue() {  # 이벤트, delivery_id
   aws_ sqs send-message --queue-url $Q --message-body "{\"schema_version\":1,\"source\":\"webhook\",\"delivery_id\":\"$2\",\"event\":\"$1\",\"s3_key\":\"2026-11-11/$2.json\",\"received_at\":\"2026-11-11T00:00:00Z\"}"
 }
 send() {     # fixture, 이벤트, delivery_id
-  aws_ s3 cp "/f/$1.json" "s3://reposcope-raw-events/2026-11-11/$3.json" && enqueue "$2" "$3"
+  aws_ s3 cp "/f/$1.json" "s3://$P-raw-events/2026-11-11/$3.json" && enqueue "$2" "$3"
 }
 
 send installation.created installation d-install          # 저장소 2개 LINKED
@@ -111,7 +112,7 @@ send installation.created installation d-install          # 저장소 2개 LINKE
 |---|---|---|
 | 중복 | `send push push d-push` → `enqueue push d-push`(같은 delivery) → `send push push d-push-2`(같은 커밋, 다른 delivery) | `psql_ "SELECT count(*) FROM activities WHERE kind='COMMIT'"` = `2`, `d-push`의 `processed_deliveries` 1행, 로그에 `"result": "DUPLICATE"` |
 | 순서 | `send issues.closed issues d-ic` → `send issues.opened issues d-io` | `psql_ "SELECT state FROM activities WHERE kind='ISSUE'"` = `closed` (1행) |
-| DLQ | `enqueue push d-missing` (S3 원본 없음) | 로그에 `message_failed` 5회, 약 5분 뒤 `aws_ sqs get-queue-attributes --queue-url http://moto:5000/123456789012/reposcope-events-dlq --attribute-names ApproximateNumberOfMessages` = `1` |
+| DLQ | `enqueue push d-missing` (S3 원본 없음) | 로그에 `message_failed` 5회, 약 5분 뒤 `aws_ sqs get-queue-attributes --queue-url http://moto:5000/123456789012/$P-events-dlq --attribute-names ApproximateNumberOfMessages` = `1` |
 
 `INGEST_SCHEMA`를 `public`이 아닌 값으로 쓰면 `psql_`의 SQL 앞에 `SET search_path TO <스키마>;`를 붙인다.
 
