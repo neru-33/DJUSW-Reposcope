@@ -1,8 +1,8 @@
 # 운영(EC2) 배포 설정: api와 cloudflared.
-# worker와 배포 자동화(CD)는 T-49에서 이어서 추가한다. 사용법은 infra/README.md의 "운영 배포 설정".
+# worker와 배포 자동화(CD)는 #75에서 이어서 추가한다. 사용법은 infra/README.md의 "운영 배포 설정".
 #
 # 배포 스크립트가 Parameter Store에서 비밀값을 읽어 환경 변수로 넘긴다. 이 파일에는 값을 쓰지 않는다.
-#   먼저 infra/deploy/block-imds.sh를 실행한 뒤 docker compose -f infra/deploy/compose.yml up -d
+#   docker compose -f infra/deploy/compose.yml up -d   (IMDS 차단은 EC2 user_data의 systemd 단위가 부팅 때 적용한다)
 
 name: reposcope
 
@@ -39,7 +39,7 @@ services:
     networks: [edge]
     restart: unless-stopped
 
-# api와 cloudflared만 쓰는 네트워크. 대역을 고정해 두어야 block-imds.sh가 이 대역에서 나가는 IMDS 요청만 막을 수 있다.
+# api와 cloudflared만 쓰는 네트워크. 대역을 고정해 두어야 EC2 user_data의 IMDS 차단 규칙이 이 대역에서 나가는 IMDS 요청만 막을 수 있다.
 # worker는 EC2 역할의 자격 증명이 필요하므로 이 네트워크에 넣지 않는다.
 networks:
   edge:

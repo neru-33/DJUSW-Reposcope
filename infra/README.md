@@ -85,7 +85,7 @@ EC2 역할에는 GitHub App 키를 읽는 권한이 있다. 인스턴스 메타�
 
 ### 운영 배포 설정
 
-`infra/deploy/compose.yml`이 EC2에서 api와 `cloudflared`를 실행한다. worker와 배포 자동화(CD)는 T-49에서 추가한다.
+`infra/deploy/compose.yml`이 EC2에서 api와 `cloudflared`를 실행한다. worker와 배포 자동화(CD)는 #75에서 추가한다.
 
 | 항목 | 내용 |
 |---|---|
@@ -95,14 +95,17 @@ EC2 역할에는 GitHub App 키를 읽는 권한이 있다. 인스턴스 메타�
 | 비밀값 | `DB_PASSWORD`, `TUNNEL_TOKEN`은 파일에 쓰지 않는다. 배포 스크립트가 Parameter Store에서 읽어 환경 변수로 넘긴다 |
 | 터널 토큰 | Terraform이 만들지 않는다. 운영자가 Cloudflare 대시보드에서 복사해 Parameter Store(SecureString)에 넣는다 |
 
-`CORS_ALLOWED_ORIGIN`과 `FRONTEND_URL`은 api가 해당 환경 변수를 읽는 PR(#42)이 병합된 뒤에 효과가 있다.
-
-**IMDS 차단**: api와 `cloudflared`는 고정 대역(`172.28.0.0/24`)의 `edge` 네트워크만 쓴다. `infra/deploy/block-imds.sh`가 이 대역에서 `169.254.169.254`로 가는 요청을 막는다. 재부팅하면 규칙이 사라지므로 compose를 띄우기 전에 매번 실행한다. worker는 EC2 역할이 필요하므로 이 네트워크에 넣지 않는다.
+**IMDS 차단**: api와 `cloudflared`는 고정 대역(`172.28.0.0/24`)의 `edge` 네트워크만 쓴다. EC2의 user_data가 설치하는 systemd 단위(`<name_prefix>-block-imds.service`)가 부팅할 때마다 `docker.service`보다 먼저 이 대역에서 `169.254.169.254`로 가는 요청을 막는 규칙을 DOCKER-USER 체인에 넣는다. 재부팅이나 중지 후 시작에도 컨테이너가 뜨기 전에 규칙이 적용되므로 따로 실행할 것이 없다. worker는 EC2 역할이 필요하므로 이 네트워크에 넣지 않는다.
 
 ```bash
-sudo sh infra/deploy/block-imds.sh
 docker compose -f infra/deploy/compose.yml up -d
 ```
+
+**apply 후 확인**:
+
+1. EC2에서 `systemctl is-active <name_prefix>-block-imds.service`가 `active`이고 `sudo iptables -S DOCKER-USER`에 `-s 172.28.0.0/24 -d 169.254.169.254/32 -j DROP`이 있다.
+2. api 컨테이너에서 `169.254.169.254`에 접근되지 않는다.
+3. EC2를 재부팅한 뒤에도 api 컨테이너에서 `169.254.169.254`에 접근되지 않는다.
 
 문법만 확인하려면 값을 임시로 채워 `docker compose -f infra/deploy/compose.yml config`를 실행한다.
 

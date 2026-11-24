@@ -23,6 +23,40 @@ mkdir -p /etc/docker
 cat > /etc/docker/daemon.json <<'JSON'
 { "log-driver": "json-file", "log-opts": { "max-size": "10m", "max-file": "3" } }
 JSON
+
+# api와 cloudflared가 쓰는 edge 네트워크(172.28.0.0/24)에서 IMDS(169.254.169.254)로 가는 요청을 막는다.
+# EC2 역할에는 GitHub App 키를 읽는 권한이 있다. iptables 규칙은 재부팅하면 사라지므로
+# 부팅할 때마다 docker.service보다 먼저 DOCKER-USER 체인에 규칙을 넣는다. Docker는 이미 있는 DOCKER-USER 규칙을 지우지 않는다.
+cat > /usr/local/sbin/${name_prefix}-block-imds.sh <<'SH'
+#!/bin/sh
+set -eu
+EDGE_SUBNET=172.28.0.0/24
+IMDS=169.254.169.254
+iptables -N DOCKER-USER 2>/dev/null || true
+if ! iptables -C DOCKER-USER -s "$EDGE_SUBNET" -d "$IMDS" -j DROP 2>/dev/null; then
+  iptables -I DOCKER-USER 1 -s "$EDGE_SUBNET" -d "$IMDS" -j DROP
+fi
+SH
+chmod 755 /usr/local/sbin/${name_prefix}-block-imds.sh
+
+cat > /etc/systemd/system/${name_prefix}-block-imds.service <<'UNIT'
+[Unit]
+Description=Block IMDS access from the edge docker network
+Before=docker.service
+Wants=network-pre.target
+After=network-pre.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/${name_prefix}-block-imds.sh
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+systemctl daemon-reload
+systemctl enable --now ${name_prefix}-block-imds.service
+
 systemctl enable --now docker
 
 # 메모리 2GB에서 JVM 2개가 뜰 수 있어 스왑 1GB를 만든다(루트 볼륨 안이라 추가 EBS 없음)
