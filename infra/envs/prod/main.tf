@@ -61,6 +61,7 @@ module "app" {
     module.secrets.arns["github-app-key"],
     module.secrets.arns["github-client-secret"],
     module.secrets.arns["db-password"],
+    module.secrets.arns["tunnel-token"],
   ]
 }
 
@@ -70,4 +71,14 @@ module "cost" {
   name_prefix        = var.name_prefix
   alert_emails       = [var.alert_email]
   monthly_budget_usd = var.monthly_budget_usd
+}
+
+module "cloudflare" {
+  source = "../../modules/cloudflare"
+
+  zone_id     = var.cloudflare_zone_id
+  account_id  = var.cloudflare_account_id
+  domain      = var.domain
+  name_prefix = var.name_prefix
+  tunnel_id   = var.cloudflare_tunnel_id
 }

@@ -63,3 +63,25 @@ variable "raw_force_destroy" {
   type        = bool
   default     = false
 }
+
+variable "domain" {
+  description = "서비스 도메인(www와 api가 이 아래에 만들어진다)"
+  type        = string
+  default     = "eclipse-sync.com"
+}
+
+variable "cloudflare_zone_id" {
+  description = "Cloudflare 영역(도메인) ID"
+  type        = string
+}
+
+variable "cloudflare_account_id" {
+  description = "Cloudflare 계정 ID"
+  type        = string
+}
+
+variable "cloudflare_tunnel_id" {
+  description = "대시보드에서 만든 터널의 ID. 비우면 Terraform이 터널을 만든다"
+  type        = string
+  default     = null
+}

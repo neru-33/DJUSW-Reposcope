@@ -15,6 +15,8 @@
 | Terraform | 1.17.0 | [Terraform](https://github.com/hashicorp/terraform) | [BUSL-1.1](https://github.com/hashicorp/terraform/blob/main/LICENSE) | AWS 자원 정의와 생성 | 개발 도구. 저장소에 포함하지 않으며 사용 조건 검토 필요 |
 | Terraform AWS Provider | 6.72.0 | [terraform-provider-aws](https://github.com/hashicorp/terraform-provider-aws/tree/v6.72.0) | [MPL-2.0](https://github.com/hashicorp/terraform-provider-aws/blob/v6.72.0/LICENSE) | AWS 자원 관리 | 개발 도구. 저장소에 포함하지 않음 |
 | Terraform Archive Provider | 2.8.1 | [terraform-provider-archive](https://github.com/hashicorp/terraform-provider-archive/tree/v2.8.1) | [MPL-2.0](https://github.com/hashicorp/terraform-provider-archive/blob/v2.8.1/LICENSE) | Lambda 코드 압축 | 개발 도구. 저장소에 포함하지 않음 |
+| Terraform Cloudflare Provider | 5.29.0 | [terraform-provider-cloudflare](https://github.com/cloudflare/terraform-provider-cloudflare/tree/v5.29.0) | [Apache-2.0](https://github.com/cloudflare/terraform-provider-cloudflare/blob/v5.29.0/LICENSE) | Cloudflare 터널, DNS, 영역 설정 정의 | 개발 도구. 저장소에 포함하지 않고 Terraform이 내려받음 |
+| cloudflared | 2026.11.1 (컨테이너 이미지 태그) | [cloudflared](https://github.com/cloudflare/cloudflared/tree/2026.11.1) | [Apache-2.0](https://github.com/cloudflare/cloudflared/blob/2026.11.1/LICENSE) | 운영 EC2에서 Cloudflare Tunnel 연결 | 라이선스·고지 조건 검토 후 공개 |
 | boto3 | 1.43.123 | [PyPI](https://pypi.org/project/boto3/1.43.123/) | Apache-2.0 | worker의 SQS, S3 접근 | 라이선스·고지 조건 검토 후 공개 |
 | psycopg (`psycopg[binary]`) | 3.3.7 | [PyPI](https://pypi.org/project/psycopg/3.3.7/) | LGPL-3.0 (binary 패키지에 libpq 포함) | worker의 PostgreSQL 연결 | 수정 없이 라이브러리로만 사용. 배포 시 고지 조건 추가 검토 필요 |
 | PyJWT (`PyJWT[crypto]`) | 2.15.1 | [PyPI](https://pypi.org/project/PyJWT/2.15.1/) | MIT | worker의 GitHub App JWT 서명 | 공개 가능. 배포 시 라이선스 고지 유지 |
