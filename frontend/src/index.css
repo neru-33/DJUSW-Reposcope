@@ -1,9 +1,202 @@
-:root {
-  font-family: system-ui, -apple-system, 'Segoe UI', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
-  line-height: 1.6;
+/* 화면 틀. 상단바는 연계 프로젝트(2026URP) 화면의 상단바와 같은 모양이다. 기준: docs/ui-guide.md 5장 */
+
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  overflow-x: clip;
 }
 
-body {
-  margin: 0;
+.header {
+  background: #fff;
+  border-bottom: 1px solid #e0e9f3;
+}
+
+.header-inner {
+  max-width: 1600px;
+  min-height: 85px;
+  padding: 12px 32px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  box-sizing: border-box;
+}
+
+.brand {
+  flex-shrink: 0;
+  color: #1d3e68;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  text-decoration: none;
+}
+
+.navigation {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.navigation a {
+  border-radius: 8px;
+  color: #60728b;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 12px;
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.navigation a:hover,
+.navigation a.active {
+  color: #245bbc;
+  background: #eaf2ff;
+}
+
+.login-area {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.role-badge {
+  background: #eaf2ff;
+  padding: 8px 12px;
+  border-radius: 20px;
+  color: #285db8;
+  font-weight: 800;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.primary-button,
+.secondary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 11px 17px;
+  border-radius: 9px;
+  border: 1px solid transparent;
+  font: inherit;
+  font-weight: 800;
+  font-size: 12px;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.primary-button {
+  background: #2157b0;
+  border-color: #2157b0;
+  color: #fff;
+}
+
+.primary-button:hover {
+  background: #173e81;
+}
+
+.secondary-button {
+  background: #fff;
+  border-color: #d5e0ef;
+  color: #295eae;
+}
+
+.secondary-button:hover {
+  background: #f0f5fd;
+}
+
+.main-content {
+  flex: 1;
+  width: 100%;
+  max-width: 1600px;
+  padding: 32px 32px 96px;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+:focus-visible {
+  outline: 2px solid #2157b0;
+  outline-offset: 2px;
+}
+
+/* 영역: 그림자 없이 선으로 구분한다. 기준: docs/ui-guide.md 4장 */
+.panel {
+  background: #fff;
+  border: 1px solid #d8dfe8;
+  border-radius: 6px;
+}
+
+.panel-body {
   padding: 24px;
+}
+
+/* 좁은 화면에서도 상단바를 한 줄로 유지한다. */
+@media (max-width: 1080px) {
+  .header-inner {
+    gap: 16px;
+  }
+
+  .navigation {
+    flex: 1;
+    min-width: 0;
+    justify-content: flex-start;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .navigation::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@media (max-width: 860px) {
+  .role-badge {
+    display: none;
+  }
+}
+
+@media (max-width: 700px) {
+  .main-content {
+    padding: 22px 15px 64px;
+  }
+
+  .header-inner {
+    min-height: 64px;
+    padding: 10px 15px;
+    gap: 10px;
+  }
+
+  .brand {
+    font-size: 17px;
+  }
+
+  .navigation {
+    gap: 2px;
+  }
+
+  .navigation a {
+    padding: 10px 8px;
+  }
+
+  .primary-button,
+  .secondary-button {
+    min-height: 36px;
+    padding: 8px 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
 }

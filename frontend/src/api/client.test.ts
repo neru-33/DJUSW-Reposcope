@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { ApiError, api, fetchMe, request, setCsrfToken } from './client'
+import { ApiError, api, fetchMe, request, setCsrfToken, setUnauthorizedHandler } from './client'
 
 const fetchMock = vi.fn<typeof fetch>()
 
@@ -107,6 +107,35 @@ describe('request', () => {
 
     expect(error).not.toBeInstanceOf(ApiError)
     expect(error).toMatchObject({ name: 'AbortError' })
+  })
+})
+
+describe('세션 만료 알림', () => {
+  afterEach(() => setUnauthorizedHandler(null))
+
+  it('401 unauthorized를 받으면 알린다', async () => {
+    const handler = vi.fn()
+    setUnauthorizedHandler(handler)
+    fetchMock.mockResolvedValueOnce(jsonResponse({ error: 'unauthorized' }, 401))
+
+    await api.get('/api/projects').catch(() => undefined)
+
+    expect(handler).toHaveBeenCalledOnce()
+  })
+
+  it('비밀번호가 틀린 401, 로그인 상태 확인, 로그아웃은 알리지 않는다', async () => {
+    const handler = vi.fn()
+    setUnauthorizedHandler(handler)
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse({ error: 'invalid_credentials' }, 401))
+      .mockResolvedValueOnce(jsonResponse({ error: 'unauthorized' }, 401))
+      .mockResolvedValueOnce(jsonResponse({ error: 'unauthorized' }, 401))
+
+    await api.post('/auth/admin/password', {}).catch(() => undefined)
+    await api.get('/api/me').catch(() => undefined)
+    await api.post('/auth/logout').catch(() => undefined)
+
+    expect(handler).not.toHaveBeenCalled()
   })
 })
 
