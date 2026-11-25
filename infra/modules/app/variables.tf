@@ -54,3 +54,8 @@ variable "compose_version" {
   type        = string
   default     = "v2.29.7"
 }
+
+variable "ecr_repository_arns" {
+  description = "EC2가 이미지를 받을(pull) ECR 저장소 ARN 목록. 올리는 권한은 주지 않는다"
+  type        = list(string)
+}

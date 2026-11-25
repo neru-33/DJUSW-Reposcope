@@ -45,8 +45,17 @@ module "ingest" {
   lambda_zip_path           = "${path.root}/.build/ingest.zip"
 }
 
+module "ecr" {
+  source = "../../modules/ecr"
+
+  name_prefix  = var.name_prefix
+  force_delete = var.ecr_force_delete
+}
+
 module "app" {
   source = "../../modules/app"
+
+  ecr_repository_arns = module.ecr.repository_arns
 
   name_prefix              = var.name_prefix
   region                   = var.region
@@ -95,4 +104,15 @@ module "web" {
   domain        = var.domain
   zone_id       = var.cloudflare_zone_id
   force_destroy = var.web_force_destroy
+}
+
+module "github_oidc" {
+  source = "../../modules/github-oidc"
+
+  name_prefix         = var.name_prefix
+  region              = var.region
+  github_repository   = var.github_repository
+  oidc_provider_arn   = var.github_oidc_provider_arn
+  ecr_repository_arns = module.ecr.repository_arns
+  instance_id         = module.app.instance_id
 }
