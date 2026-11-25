@@ -92,6 +92,18 @@ variable "github_repository" {
   default     = "neru-33/DJUSW-Reposcope"
 }
 
+variable "github_owner_id" {
+  description = "github_repository 소유자의 GitHub 숫자 ID"
+  type        = string
+  default     = "202424717"
+}
+
+variable "github_repository_id" {
+  description = "github_repository의 GitHub 숫자 ID"
+  type        = string
+  default     = "1436793669"
+}
+
 variable "github_oidc_provider_arn" {
   description = "계정에 이미 있는 GitHub OIDC provider ARN. 없으면 비워 둔다(새로 만든다)"
   type        = string

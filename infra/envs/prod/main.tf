@@ -109,12 +109,14 @@ module "web" {
 module "github_oidc" {
   source = "../../modules/github-oidc"
 
-  name_prefix         = var.name_prefix
-  region              = var.region
-  github_repository   = var.github_repository
-  oidc_provider_arn   = var.github_oidc_provider_arn
-  ecr_repository_arns = module.ecr.repository_arns
-  instance_id         = module.app.instance_id
+  name_prefix          = var.name_prefix
+  region               = var.region
+  github_repository    = var.github_repository
+  github_owner_id      = var.github_owner_id
+  github_repository_id = var.github_repository_id
+  oidc_provider_arn    = var.github_oidc_provider_arn
+  ecr_repository_arns  = module.ecr.repository_arns
+  instance_id          = module.app.instance_id
 
   web_bucket_arn              = module.web.bucket_arn
   cloudfront_distribution_arn = module.web.distribution_arn
