@@ -64,6 +64,17 @@ AWS 자원은 Terraform으로만 만들고 바꾼다. `terraform apply`는 infra
 
 ### 처음 만들 때
 
+먼저 AWS 계정의 요금제를 확인한다. 계정이 **무료(Free) 플랜**이면 RDS 자동 백업 보존 기간(7일)이 한도를 넘어 `FreeTierRestrictionError`로 apply가 멈춘다(처음 apply에서 실제로 겪었다). 아래가 `FREE`이면 apply 전에 유료(Paid) 플랜으로 올린다.
+
+```bash
+aws freetier get-account-plan-state --region us-east-1
+```
+
+- 유료 플랜으로 올리는 곳: <https://settings.aws.com> → Billing → Upgrade. **되돌릴 수 없다.**
+- 남은 크레딧은 이후 청구에 적용되고, 크레딧을 넘는 사용분은 등록한 카드로 청구된다. 크레딧 만료일은 콘솔 Billing → Credits에서 확인한다.
+- 무료 플랜을 유지하면 6개월 또는 크레딧 소진 중 먼저 오는 때 계정이 정지되고, 90일 안에 올리지 않으면 자원과 데이터가 삭제된다.
+- 이미 만들어진 자원이 있는 상태에서 apply가 중간에 멈췄다면, 원인을 해결한 뒤 `plan`부터 다시 실행하면 이어서 진행된다.
+
 1. state 버킷을 만든다.
 
    ```bash
@@ -116,11 +127,17 @@ AWS 자원은 Terraform으로만 만들고 바꾼다. `terraform apply`는 infra
    aws ssm put-parameter --name /reposcope/tunnel-token --type SecureString --overwrite --value "<토큰>"
    ```
 
-4. apply 뒤 state에 터널 비밀값이 남지 않았는지 확인한다. 아래 결과에 `tunnel_secret`이 나오면 안 된다.
+4. apply 뒤 state에 터널 비밀값이 남지 않았는지 확인한다. state에는 `tunnel_secret`이라는 항목이 있지만 값이 `null`이어야 한다(값이 `null`이 아니면 비밀값이 남은 것이다). 값을 화면에 출력하지 않으려면 `null`인 줄이 있는지만 센다.
 
    ```bash
-   terraform state pull | grep -i -E "tunnel_secret|token"
+   terraform state pull | grep -c '"tunnel_secret": null'
    ```
+
+   ```powershell
+   (terraform state pull | Select-String -Pattern '"tunnel_secret": null').Count
+   ```
+
+   결과가 `1`이면 정상이고 `0`이면 비밀값이 남은 것이다(비밀값을 공유하지 말고 아래 절차로 간다).
 
    비밀값이 남으면 Terraform으로 터널을 만들지 않는다. 대시보드에서 터널만 만들고 그 ID를 `terraform.tfvars`의 `cloudflare_tunnel_id`에 넣은 뒤 다시 apply한다. 공개 주소와 DNS는 그대로 Terraform이 만든다.
 
@@ -202,4 +219,4 @@ state 버킷(`bootstrap/`)은 삭제 방지가 걸려 있어 함께 지워지지
 | S3, SQS, Lambda, API Gateway, Parameter Store, SNS, 예산, CloudFront, ACM | 1 미만(트래픽이 적을 때) |
 | **합계** | **약 47(약 6.6만 원)** |
 
-프리 티어 적용 여부는 계정의 요금제에 따라 다르므로 apply 전에 콘솔의 Billing에서 확인한다.
+프리 티어 적용 여부는 계정의 요금제에 따라 다르므로 apply 전에 콘솔의 Billing에서 확인한다. 계정이 무료 플랜이면 위 "처음 만들 때"의 안내처럼 유료 플랜으로 올려야 apply가 끝난다. 크레딧(신규 계정은 최대 약 200달러)이 끝나면 등록한 카드로 청구되므로 예산 알림(`monthly_budget_usd`)이 오는지 확인한다.
