@@ -1,6 +1,9 @@
 package com.djusw.api.security;
 
 import com.djusw.api.error.ApiException;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import java.net.InetSocketAddress;
@@ -10,6 +13,7 @@ import java.util.stream.IntStream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 import tools.jackson.databind.ObjectMapper;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -18,6 +22,8 @@ class GithubApiClientTests {
     private HttpServer server;
     private boolean failSecondPage;
     private boolean missingPage;
+    private String tokenError;
+    private String failedPath;
     private GithubApiClient client;
 
     @BeforeEach
@@ -51,16 +57,68 @@ class GithubApiClientTests {
         assertThrows(ApiException.class, () -> client.authenticate("test-code", "test-verifier"));
     }
 
+    @Test
+    void logsTokenErrorWithoutResponseOrCredentials() {
+        var logs = captureLogs();
+        try {
+            tokenError = "incorrect_client_credentials";
+            assertThrows(ApiException.class, () -> client.authenticate("test-code", "test-verifier"));
+            String output = messages(logs);
+            assertTrue(output.contains("error=incorrect_client_credentials"));
+            assertFalse(output.contains("test-secret"));
+            assertFalse(output.contains("sensitive-response-body"));
+
+            logs.list.clear();
+            tokenError = "sensitive-response-body";
+            assertThrows(ApiException.class, () -> client.authenticate("test-code", "test-verifier"));
+            assertTrue(messages(logs).contains("error=unknown"));
+            assertFalse(messages(logs).contains("sensitive-response-body"));
+        } finally {
+            ((Logger) LoggerFactory.getLogger(GithubApiClient.class)).detachAppender(logs);
+        }
+    }
+
+    @Test
+    void logsApiPathAndStatusWithoutTokenOrResponse() {
+        var logs = captureLogs();
+        try {
+            failedPath = "/user/installations/1/repositories";
+            assertThrows(ApiException.class, () -> client.authenticate("test-code", "test-verifier"));
+            String output = messages(logs);
+            assertTrue(output.contains("path=user/installations/{id}/repositories, status=403"));
+            assertFalse(output.contains("fake-token"));
+            assertFalse(output.contains("sensitive-response-body"));
+        } finally {
+            ((Logger) LoggerFactory.getLogger(GithubApiClient.class)).detachAppender(logs);
+        }
+    }
+
+    private static ListAppender<ILoggingEvent> captureLogs() {
+        var logs = new ListAppender<ILoggingEvent>();
+        logs.start();
+        ((Logger) LoggerFactory.getLogger(GithubApiClient.class)).addAppender(logs);
+        return logs;
+    }
+
+    private static String messages(ListAppender<ILoggingEvent> logs) {
+        return logs.list.stream().map(ILoggingEvent::getFormattedMessage)
+                .collect(java.util.stream.Collectors.joining("\n"));
+    }
+
     private void respond(HttpExchange exchange) throws java.io.IOException {
         String path = exchange.getRequestURI().getPath();
         String query = exchange.getRequestURI().getRawQuery();
         int status = 200;
         String body;
         if (path.equals("/token")) {
-            body = "{\"access_token\":\"fake-token\"}";
+            body = tokenError == null ? "{\"access_token\":\"fake-token\"}"
+                    : "{\"error\":\"" + tokenError + "\",\"error_description\":\"sensitive-response-body\"}";
         } else if (!"Bearer fake-token".equals(exchange.getRequestHeaders().getFirst("Authorization"))) {
             status = 401;
             body = "{}";
+        } else if (path.equals(failedPath)) {
+            status = 403;
+            body = "{\"message\":\"sensitive-response-body\"}";
         } else if (path.equals("/user")) {
             body = "{\"id\":123,\"login\":\"test-user\"}";
         } else if (path.equals("/user/installations")) {
