@@ -6,11 +6,11 @@ RepoScope가 사용하는 GitHub App의 설정을 기록한다. 비밀값은 이
 
 | 항목 | 값 |
 |---|---|
-| 이름 | reposcope |
+| 이름 | reposcope-djusw |
 | 소유 계정 | surhwa11228 |
 | App ID | 5666890 |
 | Client ID | Iv23liDO7KsFD2DHGFwd |
-| 공개 상태 | 비공개 (Webhook 주소가 정해진 뒤 공개로 전환) |
+| 공개 상태 | 공개 (Any account) |
 
 ## 권한
 
@@ -48,15 +48,21 @@ Repository permissions만 사용하고 모두 읽기 전용이다. Organization 
 
 ## Webhook
 
-Webhook은 켜 두었고, URL은 실제 수신 주소가 없어 임시 값(`https://example.com/webhook`)이다. Webhook secret은 비워 두었다. 앱은 비공개이고 설치한 계정이 없어 이벤트가 전송되지 않는다. 실제 주소가 정해지기 전에는 앱을 설치하지 않고 공개로 전환하지 않는다.
+| 항목 | 값 |
+|---|---|
+| Webhook | 사용 |
+| Webhook URL | API Gateway 주소(`infra/envs/prod`의 `terraform output webhook_url`) |
+| Webhook secret | Parameter Store `/reposcope/webhook-secret`과 같은 값 |
 
-실제 주소가 정해지면 아래 순서로 바꾼다.
+수신 Lambda는 `X-Hub-Signature-256` 서명을 검사한다. 서명이 맞으면 2xx, 틀리면 401로 응답한다. 응답 코드는 App 설정의 Advanced → Recent Deliveries에서 확인한다.
 
-1. 임의의 secret을 만들어 Parameter Store의 `/reposcope/webhook-secret`에 저장한다.
+Webhook secret을 바꿀 때는 아래 순서를 따른다.
+
+1. 32자 이상의 임의의 secret을 만들어 Parameter Store의 `/reposcope/webhook-secret`에 저장한다.
 2. App 설정의 Webhook secret에 같은 값을 입력한다.
-3. Webhook URL을 API Gateway 주소(`/webhook`)로 바꾼다.
-4. Advanced → Recent Deliveries에서 응답 코드를 확인한다. 서명이 맞으면 2xx, 틀리면 401이다.
-5. 시연 전에 Advanced → Danger zone에서 공개(Any account)로 전환한다. 공개 앱이 다른 계정에 설치되면 다시 비공개로 바꿀 수 없다.
+3. Lambda는 secret을 최대 5분 동안 캐시하므로 그동안의 전송은 401일 수 있다. 5분 뒤 Recent Deliveries에서 401인 전송을 Redeliver하고 2xx인지 확인한다.
+
+앱은 공개 상태이고, 다른 계정에 설치된 뒤에는 비공개로 되돌릴 수 없다.
 
 ## 비밀값
 
@@ -66,4 +72,4 @@ Webhook은 켜 두었고, URL은 실제 수신 주소가 없어 임시 값(`http
 | Client secret | Parameter Store `/reposcope/github-client-secret` |
 | Webhook secret | Parameter Store `/reposcope/webhook-secret` |
 
-현재 Private key와 Client secret은 만들지 않았다. Parameter Store가 준비된 뒤 생성한다. 키 파일은 저장 직후 로컬에서 삭제한다. 유출이 의심되면 GitHub에서 해당 값을 새로 만들고 이전 값을 삭제한 뒤 Parameter Store를 교체하고 팀에 알린다.
+Private key와 Client secret은 만들어 위 위치에 저장했다. 키 파일은 저장 직후 로컬에서 삭제한다. 유출이 의심되면 GitHub에서 해당 값을 새로 만들고 이전 값을 삭제한 뒤 Parameter Store를 교체하고 팀에 알린다.
