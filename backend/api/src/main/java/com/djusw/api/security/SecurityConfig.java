@@ -15,6 +15,7 @@ import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.csrf.CsrfException;
+import org.springframework.security.web.csrf.CsrfFilter;
 import org.springframework.security.web.csrf.HttpSessionCsrfTokenRepository;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -31,6 +32,7 @@ public class SecurityConfig {
         csrfTokens.setHeaderName("X-CSRF-Token");
         var corsFilter = new CorsFilter(corsSource);
         http.addFilterAt(corsFilter, CorsFilter.class)
+            .addFilterBefore(new GithubSessionExpiryFilter(), CsrfFilter.class)
             .authorizeHttpRequests(authorize -> authorize
                 .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/health", "/api/version",

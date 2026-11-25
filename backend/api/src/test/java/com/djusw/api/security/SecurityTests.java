@@ -318,11 +318,8 @@ class SecurityTests {
 
     @Test
     void githubLoginPathsArePublic() throws Exception {
-        for (String path : List.of("/auth/github/login", "/auth/github/callback")) {
-            mvc.perform(get(path))
-                    .andExpect(status().isNotFound())
-                    .andExpect(jsonPath("$.error").value("not_found"));
-        }
+        mvc.perform(get("/auth/github/login")).andExpect(status().isServiceUnavailable());
+        mvc.perform(get("/auth/github/callback")).andExpect(status().isBadRequest());
     }
 
     @Test
