@@ -55,3 +55,13 @@ output "web_distribution_id" {
   description = "캐시 무효화에 쓰는 CloudFront 배포 ID"
   value       = module.web.distribution_id
 }
+
+output "ecr_repository_urls" {
+  description = "api, worker 이미지 저장소 주소"
+  value       = module.ecr.repository_urls
+}
+
+output "deploy_role_arn" {
+  description = "GitHub Actions 워크플로의 role-to-assume 값"
+  value       = module.github_oidc.role_arn
+}

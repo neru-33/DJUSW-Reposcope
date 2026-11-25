@@ -20,6 +20,8 @@ AWS 자원은 Terraform으로만 만들고 바꾼다. `terraform apply`는 infra
 | `modules/app` | EC2, IAM 역할 |
 | `modules/cloudflare` | 터널, api 공개 주소와 DNS, Always Use HTTPS, 요청 제한 |
 | `modules/web` | 웹 버킷(S3), CloudFront, ACM 인증서(us-east-1), `www`와 인증서 확인용 DNS |
+| `modules/ecr` | api, worker 이미지 저장소와 오래된 이미지 정리 규칙 |
+| `modules/github-oidc` | GitHub Actions가 AWS에 들어오는 OIDC 역할 |
 | `modules/cost` | 예산 알림 |
 
 ### 이름 규칙
@@ -159,6 +161,23 @@ apply 뒤 아래를 확인한다.
 
 CloudFront 배포는 만드는 데 5분에서 15분이 걸린다. 인증서 확인용 레코드는 Cloudflare에 만들어지므로 같은 터미널에 `CLOUDFLARE_API_TOKEN`이 설정되어 있어야 한다.
 
+### 이미지 저장소와 배포 권한
+
+배포 자동화(#75)가 쓰는 자원이다. 배포 스크립트와 워크플로는 이어지는 PR에서 추가한다.
+
+| 자원 | 내용 |
+|---|---|
+| ECR `<접두어>-api`, `<접두어>-worker` | 태그를 덮어쓸 수 없다(`IMMUTABLE`). 같은 태그는 항상 같은 이미지이므로 이전 태그로 다시 배포하면 되돌릴 수 있다. 최근 10개만 남기고 지우며 올릴 때 취약점 검사를 한다 |
+| EC2 역할 | 이미지를 받을 수만 있다. 올리는 권한은 없다 |
+| `<접두어>-github-deploy` 역할 | GitHub Actions가 OIDC로 맡는다. 오래 쓰는 접근 키를 저장소 secret에 넣지 않는다 |
+
+배포 역할은 `github_repository`(기본 `neru-33/DJUSW-Reposcope`)의 **`main` 브랜치에서 실행된 워크플로만** 맡을 수 있다. 다른 저장소, 다른 브랜치, 포크의 풀 리퀘스트는 맡지 못한다. 권한은 ECR 이미지 올리기, 이 EC2 한 대에 배포 명령 보내기와 결과 읽기로 제한한다. 화면 업로드와 CloudFront 캐시 무효화 권한은 웹 구성과 함께 추가한다.
+
+- 저장소 이름이 바뀌거나 조직으로 옮기면 `github_repository`를 바꿔 다시 apply한다. 값이 틀리면 Actions가 역할을 맡지 못한다.
+- GitHub OIDC provider는 계정에 하나만 만들 수 있다. 이미 있으면 `terraform.tfvars`에 `github_oidc_provider_arn`을 넣는다.
+- 워크플로에서 `environment`를 쓰면 토큰의 `sub` 값이 달라지므로 역할의 조건도 함께 바꾼다.
+- 인프라를 종료할 때는 `ecr_force_delete = true`로 바꿔 apply한다.
+
 ### 컨테이너와 EC2 역할
 
 EC2 역할에는 GitHub App 키를 읽는 권한이 있다. 인스턴스 메타데이터의 hop limit이 2여서 EC2 위의 컨테이너는 이 역할의 자격 증명을 받을 수 있다. 이 설정은 worker 컨테이너용이다.
@@ -195,7 +214,7 @@ docker compose -f infra/deploy/compose.yml up -d
 ### 종료할 때
 
 1. `pg_dump`로 DB를 따로 보관한다. 종료할 때 최종 스냅샷을 만들지 않는다.
-2. `rds_deletion_protection = false`, `raw_force_destroy = true`, `web_force_destroy = true`로 바꿔 apply한다.
+2. `rds_deletion_protection = false`, `raw_force_destroy = true`, `web_force_destroy = true`, `ecr_force_delete = true`로 바꿔 apply한다.
 3. `terraform destroy`를 실행한다.
 
 state 버킷(`bootstrap/`)은 삭제 방지가 걸려 있어 함께 지워지지 않는다.

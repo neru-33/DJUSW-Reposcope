@@ -1,4 +1,4 @@
-# EC2 역할: SQS 수신·삭제, 원본 버킷 읽기, Parameter Store 비밀값 읽기(webhook-secret 제외), Session Manager 접속.
+# EC2 역할: SQS 수신·삭제, 원본 버킷 읽기, Parameter Store 비밀값 읽기(webhook-secret 제외), ECR 이미지 받기, Session Manager 접속.
 #
 # Session Manager 관리형 정책(AmazonSSMManagedInstanceCore)은 쓰지 않고 필요한 동작만 직접 허용한다.
 # 관리형 정책에는 ssm:GetParameter(*)가 들어 있어 webhook-secret까지 읽을 수 있기 때문이다.
@@ -59,6 +59,23 @@ data "aws_iam_policy_document" "app" {
     effect    = "Deny"
     actions   = ["ssm:GetParameter", "ssm:GetParameters", "ssm:GetParametersByPath", "ssm:GetParameterHistory"]
     resources = [var.webhook_secret_param_arn]
+  }
+
+  # 로그인 토큰 발급은 리소스를 지정할 수 없다. 이미지는 받기만 하고 올리지 못한다.
+  statement {
+    sid       = "EcrLogin"
+    actions   = ["ecr:GetAuthorizationToken"]
+    resources = ["*"]
+  }
+
+  statement {
+    sid = "EcrPull"
+    actions = [
+      "ecr:BatchGetImage",
+      "ecr:GetDownloadUrlForLayer",
+      "ecr:BatchCheckLayerAvailability",
+    ]
+    resources = var.ecr_repository_arns
   }
 
   statement {

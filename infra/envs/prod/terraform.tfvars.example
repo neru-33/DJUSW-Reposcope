@@ -11,3 +11,5 @@ cloudflare_account_id = "<계정 ID>"
 # web_force_destroy = false # 종료할 때만 true
 # cloudflare_tunnel_id = "<터널 ID>" # 터널을 대시보드에서 만든 경우만 넣는다
 # instance_type      = "t3.small"
+# github_oidc_provider_arn = "<arn>" # 계정에 GitHub OIDC provider가 이미 있을 때만 넣는다
+# ecr_force_delete   = false         # 종료할 때만 true

@@ -86,8 +86,26 @@ variable "cloudflare_tunnel_id" {
   default     = null
 }
 
+variable "github_repository" {
+  description = "배포 역할을 맡을 GitHub 저장소(<소유자>/<이름>). main 브랜치의 워크플로만 맡을 수 있다"
+  type        = string
+  default     = "neru-33/DJUSW-Reposcope"
+}
+
+variable "github_oidc_provider_arn" {
+  description = "계정에 이미 있는 GitHub OIDC provider ARN. 없으면 비워 둔다(새로 만든다)"
+  type        = string
+  default     = null
+}
+
 variable "web_force_destroy" {
   description = "인프라를 종료할 때만 true. 웹 버킷에 파일이 있어도 삭제한다"
+  type        = bool
+  default     = false
+}
+
+variable "ecr_force_delete" {
+  description = "인프라를 종료할 때만 true. 이미지가 남아 있어도 ECR 저장소를 삭제한다"
   type        = bool
   default     = false
 }
