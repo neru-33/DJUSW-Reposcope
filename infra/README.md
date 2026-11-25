@@ -64,16 +64,11 @@ AWS 자원은 Terraform으로만 만들고 바꾼다. `terraform apply`는 infra
 
 ### 처음 만들 때
 
-먼저 AWS 계정의 요금제를 확인한다. 계정이 **무료(Free) 플랜**이면 RDS 자동 백업 보존 기간(7일)이 한도를 넘어 `FreeTierRestrictionError`로 apply가 멈춘다(처음 apply에서 실제로 겪었다). 아래가 `FREE`이면 apply 전에 유료(Paid) 플랜으로 올린다.
+AWS 계정이 무료(Free) 플랜이면 RDS 자동 백업 보존 기간(7일)이 허용되지 않아 apply가 `FreeTierRestrictionError`로 멈춘다. 아래 결과의 `accountPlanType`이 `FREE`이면 apply 전에 [유료 플랜으로 올린다](https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/free-tier-plans.html). 유료 플랜은 무료 플랜으로 되돌릴 수 없다.
 
 ```bash
 aws freetier get-account-plan-state --region us-east-1
 ```
-
-- 유료 플랜으로 올리는 곳: <https://settings.aws.com> → Billing → Upgrade. **되돌릴 수 없다.**
-- 남은 크레딧은 이후 청구에 적용되고, 크레딧을 넘는 사용분은 등록한 카드로 청구된다. 크레딧 만료일은 콘솔 Billing → Credits에서 확인한다.
-- 무료 플랜을 유지하면 6개월 또는 크레딧 소진 중 먼저 오는 때 계정이 정지되고, 90일 안에 올리지 않으면 자원과 데이터가 삭제된다.
-- 이미 만들어진 자원이 있는 상태에서 apply가 중간에 멈췄다면, 원인을 해결한 뒤 `plan`부터 다시 실행하면 이어서 진행된다.
 
 1. state 버킷을 만든다.
 
@@ -120,7 +115,7 @@ aws freetier get-account-plan-state --region us-east-1
 터널 토큰은 Terraform이 만들지도 읽지도 않아 state에 남지 않는다. apply가 끝난 뒤 운영자가 직접 넣는다.
 
 1. `terraform output tunnel_id`로 터널 ID를 확인한다.
-2. Cloudflare 대시보드 → Zero Trust → Networks → Tunnels에서 그 터널을 열고 **Install and run** 화면의 토큰(`--token` 뒤의 긴 문자열)을 복사한다.
+2. Cloudflare 대시보드 → Networking → Tunnels에서 그 터널을 열고, Overview 탭의 **Add a replica**에 나오는 설치 명령에서 `eyJ`로 시작하는 문자열(토큰)을 복사한다. 명령은 실행하지 않는다.
 3. Parameter Store에 넣는다. 배포 스크립트가 이 값을 읽어 `cloudflared`에 `TUNNEL_TOKEN`으로 넘긴다.
 
    ```bash
@@ -219,4 +214,4 @@ state 버킷(`bootstrap/`)은 삭제 방지가 걸려 있어 함께 지워지지
 | S3, SQS, Lambda, API Gateway, Parameter Store, SNS, 예산, CloudFront, ACM | 1 미만(트래픽이 적을 때) |
 | **합계** | **약 47(약 6.6만 원)** |
 
-프리 티어 적용 여부는 계정의 요금제에 따라 다르므로 apply 전에 콘솔의 Billing에서 확인한다. 계정이 무료 플랜이면 위 "처음 만들 때"의 안내처럼 유료 플랜으로 올려야 apply가 끝난다. 크레딧(신규 계정은 최대 약 200달러)이 끝나면 등록한 카드로 청구되므로 예산 알림(`monthly_budget_usd`)이 오는지 확인한다.
+프리 티어 적용 여부는 계정의 요금제에 따라 다르므로 apply 전에 콘솔의 Billing에서 확인한다.
