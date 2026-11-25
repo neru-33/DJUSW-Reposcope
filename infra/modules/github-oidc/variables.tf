@@ -34,3 +34,13 @@ variable "instance_id" {
   description = "배포 명령(SSM Run Command)을 보낼 EC2 인스턴스 ID. 이 한 대에만 보낼 수 있다"
   type        = string
 }
+
+variable "web_bucket_arn" {
+  description = "화면 파일을 올릴 웹 버킷 ARN. 이 버킷에만 쓸 수 있다"
+  type        = string
+}
+
+variable "cloudfront_distribution_arn" {
+  description = "캐시를 무효화할 CloudFront 배포 ARN. 이 배포에만 무효화할 수 있다"
+  type        = string
+}

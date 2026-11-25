@@ -163,7 +163,7 @@ CloudFront 배포는 만드는 데 5분에서 15분이 걸린다. 인증서 확�
 
 ### 이미지 저장소와 배포 권한
 
-배포 자동화(#75)가 쓰는 자원이다. 배포 스크립트와 워크플로는 이어지는 PR에서 추가한다.
+배포 자동화(#75)가 쓰는 자원이다. 워크플로는 아래 "자동 배포"에서 설명한다.
 
 | 자원 | 내용 |
 |---|---|
@@ -171,12 +171,49 @@ CloudFront 배포는 만드는 데 5분에서 15분이 걸린다. 인증서 확�
 | EC2 역할 | 이미지를 받을 수만 있다. 올리는 권한은 없다 |
 | `<접두어>-github-deploy` 역할 | GitHub Actions가 OIDC로 맡는다. 오래 쓰는 접근 키를 저장소 secret에 넣지 않는다 |
 
-배포 역할은 `github_repository`(기본 `neru-33/DJUSW-Reposcope`)의 **`main` 브랜치에서 실행된 워크플로만** 맡을 수 있다. 다른 저장소, 다른 브랜치, 포크의 풀 리퀘스트는 맡지 못한다. 권한은 ECR 이미지 올리기, 이 EC2 한 대에 배포 명령 보내기와 결과 읽기로 제한한다. 화면 업로드와 CloudFront 캐시 무효화 권한은 웹 구성과 함께 추가한다.
+배포 역할은 `github_repository`(기본 `neru-33/DJUSW-Reposcope`)의 **`main` 브랜치에서 실행된 워크플로만** 맡을 수 있다. 다른 저장소, 다른 브랜치, 포크의 풀 리퀘스트는 맡지 못한다. 권한은 ECR 이미지 올리기, 이 EC2 한 대에 배포 명령 보내기와 결과 읽기, 웹 버킷에 화면 올리기(읽기 권한 없음), 이 CloudFront 배포의 캐시 무효화로 제한한다.
 
 - 저장소 이름이 바뀌거나 조직으로 옮기면 `github_repository`를 바꿔 다시 apply한다. 값이 틀리면 Actions가 역할을 맡지 못한다.
 - GitHub OIDC provider는 계정에 하나만 만들 수 있다. 이미 있으면 `terraform.tfvars`에 `github_oidc_provider_arn`을 넣는다.
 - 워크플로에서 `environment`를 쓰면 토큰의 `sub` 값이 달라지므로 역할의 조건도 함께 바꾼다.
 - 인프라를 종료할 때는 `ecr_force_delete = true`로 바꿔 apply한다.
+
+### 자동 배포(GitHub Actions)
+
+`.github/workflows/deploy.yml`이 `main`에 병합될 때(`backend/api`, `backend/worker`, `backend/migrations`, `frontend`, `infra/deploy`가 바뀐 경우) 다음을 순서대로 한다. 앞 단계가 실패하면 뒤 단계는 하지 않는다.
+
+| 단계 | 내용 |
+|---|---|
+| 이미지 | api, worker 이미지를 만들어 ECR에 올린다. 태그는 `sha-<커밋 앞 12자>`다. 태그는 덮어쓸 수 없으므로 이미 있으면 다시 만들지 않는다 |
+| 배포 | `compose.yml`과 `deploy.sh`를 SSM Run Command 명령에 담아 EC2로 보내 실행한다. 스크립트가 끝날 때까지 기다리고, 실패하면 이 단계도 실패한다. 끝나면 `https://api.eclipse-sync.com/api/version`이 새 태그를 돌려줄 때까지 기다린다 |
+| 화면 | api가 새 버전으로 올라온 뒤 화면을 빌드해(`VITE_API_BASE_URL=https://api.eclipse-sync.com`) 웹 버킷에 올리고 CloudFront 캐시를 무효화한다. 해시가 붙은 파일은 오래 캐시하고 `index.html`은 `no-cache`다. 새 파일 → `index.html` → 이전 파일 삭제 순서로 올려 중간에 빈 화면이 보이지 않게 한다 |
+
+AWS 자격 증명은 OIDC로 받는 임시 자격 증명뿐이다. 이 역할은 이 저장소의 `main`에서 실행된 워크플로만 맡을 수 있으므로 다른 브랜치에서 `workflow_dispatch`로 실행하면 역할을 맡지 못한다. 계정 ID는 로그에서 가려진다.
+
+**처음 한 번 설정**(`terraform apply` 뒤). 저장소 관리자 권한이 필요하다. 값은 Terraform 출력에서 가져오고 비밀값은 없다.
+
+```bash
+cd infra/envs/prod
+gh secret set AWS_DEPLOY_ROLE_ARN --body "$(terraform output -raw deploy_role_arn)"
+gh variable set INSTANCE_ID --body "$(terraform output -raw app_instance_id)"
+gh variable set DB_HOST --body "$(terraform output -raw db_address)"
+gh variable set WEB_BUCKET --body "$(terraform output -raw web_bucket_name)"
+gh variable set CLOUDFRONT_DISTRIBUTION_ID --body "$(terraform output -raw web_distribution_id)"
+gh variable set GH_APP_ID --body "<GitHub App ID>"
+```
+
+변수 이름은 `GITHUB_`로 시작할 수 없어 앱 ID는 `GH_APP_ID`로 둔다. 인스턴스가 교체되면(`terraform apply`로 EC2가 새로 만들어지면) `INSTANCE_ID`를 다시 넣는다.
+
+**되돌리기**: Actions → deploy → Run workflow에서 `image_tag`에 이전 태그를 넣는다. 이미지와 화면은 새로 만들지 않고 그 태그로 EC2만 다시 배포한다. 화면은 되돌리지 않으므로, 화면도 되돌려야 하면 그 커밋을 다시 `main`에 반영한다. 태그는 ECR에서 확인한다.
+
+```bash
+aws ecr describe-images --repository-name reposcope-api --query 'sort_by(imageDetails,&imagePushedAt)[].imageTags' --output text
+```
+
+**주의**
+- 수신 Lambda(`webhook/`)는 이 워크플로가 배포하지 않는다. 코드가 바뀌면 `terraform apply`로 배포한다.
+- 저장소 규칙이 CI(`ci.yml`) 통과를 병합 조건으로 요구한다. 이 워크플로는 테스트를 다시 실행하지 않는다.
+- 첫 배포는 EC2에 이미지가 없으므로 이미지 빌드와 pull 시간이 걸린다(스크립트 대기 시간 기본 180초와 별개로 워크플로는 최대 15분 기다리고, EC2의 스크립트 실행 시간 제한(`executionTimeout`)도 15분이다).
 
 ### 컨테이너와 EC2 역할
 
@@ -187,7 +224,7 @@ EC2 역할에는 GitHub App 키를 읽는 권한이 있다. 인스턴스 메타�
 
 ### 운영 배포 설정
 
-`infra/deploy/compose.yml`이 EC2에서 worker, api, `cloudflared`를 실행하고, 같은 폴더의 `deploy.sh`가 비밀값을 읽어 이 파일을 실행한다. GitHub Actions로 자동 배포하는 워크플로는 #75의 이어지는 PR에서 추가한다.
+`infra/deploy/compose.yml`이 EC2에서 worker, api, `cloudflared`를 실행하고, 같은 폴더의 `deploy.sh`가 비밀값을 읽어 이 파일을 실행한다. GitHub Actions로 자동 배포하는 워크플로는 아래 "자동 배포"에서 설명한다.
 
 | 항목 | 내용 |
 |---|---|
@@ -227,7 +264,7 @@ sudo DB_HOST=<RDS 주소> GITHUB_APP_ID=<앱 ID> ./deploy.sh <이미지 태그>
 
 **이전 버전으로 되돌리기**: 이전 이미지 태그로 같은 명령을 다시 실행한다. 태그는 덮어쓸 수 없으므로 같은 태그는 항상 같은 이미지다. ECR에는 최근 10개가 남는다.
 
-이 스크립트를 처음 쓸 때는 EC2에 `compose.yml`과 `deploy.sh`를 같은 폴더에 두고 위 명령으로 한 번 실행한다. 배포 워크플로가 생기면 이 두 파일을 워크플로가 올린다.
+이 스크립트를 처음 쓸 때는 EC2에 `compose.yml`과 `deploy.sh`를 같은 폴더에 두고 위 명령으로 한 번 실행한다. 배포 워크플로는 이 두 파일을 명령에 담아 EC2에 올리고 실행한다.
 
 EC2가 재부팅되면 `restart: unless-stopped`로 컨테이너가 다시 뜬다. 이때 worker와 api는 동시에 시작하므로, 마이그레이션이 필요한 새 버전은 재부팅이 아니라 `deploy.sh`로 배포한다.
 
