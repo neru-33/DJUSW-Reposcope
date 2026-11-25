@@ -59,7 +59,7 @@ describe('화면 틀', () => {
 
     expect(await screen.findByRole('heading', { level: 1, name: /캡스톤디자인 프로젝트/ })).toBeTruthy()
     expect(router.state.location.search).toBe('?next=%2Fprojects')
-    const login = screen.getByRole('link', { name: 'GitHub 로그인' })
+    const login = screen.getByRole('link', { name: 'GitHub으로 계속하기' })
     expect(login.getAttribute('href')).toBe('/auth/github/login?next=%2Fprojects')
   })
 

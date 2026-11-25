@@ -17,25 +17,25 @@ interface ProfileRequest {
 type Field = 'student_id' | 'name' | 'consent'
 type FieldErrors = Partial<Record<Field, string>>
 
-const STUDENT_ID = /^[0-9]{6,12}$/
+const STUDENT_ID = /^[0-9]{8}$/
 
 const MESSAGES = {
-  studentId: '학번은 숫자 6~12자리로 입력하세요.',
+  studentId: '학번 8자리를 숫자로 입력하세요.',
   name: '이름을 입력하세요.',
-  consent: '개인정보 수집·이용에 동의해야 가입할 수 있습니다.',
-  duplicate: '이미 등록된 학번입니다. 학번을 다시 확인하세요.',
+  consent: '동의해야 가입할 수 있습니다.',
+  duplicate: '이미 가입된 학번입니다. 학번을 다시 확인하세요.',
 }
 
 /** 개인정보 수집·이용 안내. 기준: docs/feature-spec.md R-1 */
 const PRIVACY_NOTICE = [
   { label: '수집 항목', value: '학번, 이름, 학과(선택), GitHub 계정 번호, 로그인 이름, 프로필 사진' },
-  { label: '이용 목적', value: '캡스톤디자인 프로젝트의 팀 구성, 진행 상태와 저장소 활동 기록 표시' },
+  { label: '이용 목적', value: '프로젝트 팀 구성, 진행 상태와 저장소 활동 표시' },
   { label: '보유 기간', value: '서비스 운영 종료 시까지' },
   {
     label: '다른 학생에게 보이는 정보',
-    value: '소속 프로젝트가 학생 모두에게 공개되면 이름, GitHub 로그인 이름, 프로필 사진, 활동 기록이 다른 학생에게 보입니다.',
+    value: '프로젝트를 학생 모두에게 공개하면 이름, GitHub 로그인 이름, 프로필 사진, 활동 기록이 다른 팀 학생에게도 보입니다.',
   },
-  { label: '동의 거부', value: '동의하지 않을 수 있으며, 동의하지 않으면 가입할 수 없습니다.' },
+  { label: '동의 거부', value: '동의하지 않을 수 있습니다. 이 경우 가입할 수 없습니다.' },
 ]
 
 function validate(input: ProfileRequest): FieldErrors {
@@ -118,7 +118,7 @@ export function SignupPage() {
       <div>
         <Title order={1}>가입</Title>
         <Text c="dimmed" mt={6}>
-          학번과 이름을 입력하고 개인정보 수집·이용에 동의하면 가입이 끝납니다.
+          학번과 이름만 입력하면 됩니다.
         </Text>
       </div>
 
@@ -128,7 +128,8 @@ export function SignupPage() {
             <Title order={2}>학생 정보</Title>
             <TextInput
               label="학번"
-              description="숫자 6~12자리"
+              placeholder="20261234"
+              maxLength={8}
               required
               inputMode="numeric"
               autoComplete="off"
@@ -152,7 +153,7 @@ export function SignupPage() {
             />
             <TextInput
               label="학과"
-              description="선택"
+              placeholder="선택"
               value={department}
               onChange={(event) => setDepartment(event.currentTarget.value)}
             />
@@ -161,7 +162,7 @@ export function SignupPage() {
 
             <Title order={2}>개인정보 수집·이용 동의</Title>
             <Checkbox
-              label="개인정보 수집·이용 안내를 읽었고 동의합니다. (필수)"
+              label="개인정보 수집·이용에 동의합니다. (필수)"
               checked={consent}
               onChange={(event) => {
                 setConsent(event.currentTarget.checked)

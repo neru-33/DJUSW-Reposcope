@@ -75,9 +75,10 @@ describe('V-1 시작', () => {
     fetchMock.mockImplementation(async () => json({ error: 'unauthorized' }, 401))
     renderAt('/')
 
-    expect(await screen.findByRole('heading', { name: '수집 범위' })).toBeTruthy()
-    expect(screen.getByRole('heading', { name: '참고자료 안내' })).toBeTruthy()
-    const logins = screen.getAllByRole('link', { name: 'GitHub 로그인' })
+    expect(await screen.findByRole('heading', { name: '연결한 저장소에서 가져오는 정보' })).toBeTruthy()
+    expect(screen.getByText('활동 기록은 평가 자료가 아닌 참고용입니다.')).toBeTruthy()
+    expect(screen.queryByRole('link', { name: 'GitHub 로그인' })).toBeNull()
+    const logins = screen.getAllByRole('link', { name: 'GitHub으로 계속하기' })
     expect(logins).toHaveLength(1)
     expect(logins[0].getAttribute('href')).toBe('/auth/github/login?next=%2Fexplore')
   })
@@ -90,21 +91,31 @@ describe('V-2 가입', () => {
 
     expect(
       await screen.findByText(
-        '소속 프로젝트가 학생 모두에게 공개되면 이름, GitHub 로그인 이름, 프로필 사진, 활동 기록이 다른 학생에게 보입니다.',
+        '프로젝트를 학생 모두에게 공개하면 이름, GitHub 로그인 이름, 프로필 사진, 활동 기록이 다른 팀 학생에게도 보입니다.',
       ),
     ).toBeTruthy()
     expect(screen.getByText('서비스 운영 종료 시까지')).toBeTruthy()
+  })
+
+  it('학번은 8자리 숫자만 받는다', async () => {
+    guestWith(() => new Response(null, { status: 204 }))
+    renderAt('/signup')
+
+    await fill({ studentId: '2026abcd' })
+
+    expect(screen.getByText('학번 8자리를 숫자로 입력하세요.')).toBeTruthy()
+    expect(profileCalls()).toHaveLength(0)
   })
 
   it('입력이 잘못되면 보내지 않고 입력란 아래에 고칠 내용을 표시한다', async () => {
     guestWith(() => new Response(null, { status: 204 }))
     renderAt('/signup')
 
-    await fill({ studentId: '12ab', name: '', consent: false })
+    await fill({ studentId: '2026123', name: '', consent: false })
 
-    expect(screen.getByText('학번은 숫자 6~12자리로 입력하세요.')).toBeTruthy()
+    expect(screen.getByText('학번 8자리를 숫자로 입력하세요.')).toBeTruthy()
     expect(screen.getByText('이름을 입력하세요.')).toBeTruthy()
-    expect(screen.getByText('개인정보 수집·이용에 동의해야 가입할 수 있습니다.')).toBeTruthy()
+    expect(screen.getByText('동의해야 가입할 수 있습니다.')).toBeTruthy()
     expect(profileCalls()).toHaveLength(0)
   })
 
@@ -112,7 +123,7 @@ describe('V-2 가입', () => {
     guestWith(() => new Response(null, { status: 204 }))
     const router = renderAt('/signup')
 
-    await fill({ studentId: ' 20261234 ', name: '홍길동 ', department: '컴퓨터공학과' })
+    await fill({ studentId: '20261234', name: ' 홍길동 ', department: '컴퓨터공학과' })
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/explore'))
     const [, init] = profileCalls()[0]
@@ -141,7 +152,7 @@ describe('V-2 가입', () => {
 
     await fill()
 
-    expect(await screen.findByText('이미 등록된 학번입니다. 학번을 다시 확인하세요.')).toBeTruthy()
+    expect(await screen.findByText('이미 가입된 학번입니다. 학번을 다시 확인하세요.')).toBeTruthy()
     expect(screen.getByRole('textbox', { name: /학번/ }).getAttribute('aria-invalid')).toBe('true')
     expect(router.state.location.pathname).toBe('/signup')
   })
@@ -152,6 +163,6 @@ describe('V-2 가입', () => {
 
     await fill()
 
-    expect(await screen.findByText('개인정보 수집·이용에 동의해야 가입할 수 있습니다.')).toBeTruthy()
+    expect(await screen.findByText('동의해야 가입할 수 있습니다.')).toBeTruthy()
   })
 })
