@@ -64,6 +64,12 @@ AWS 자원은 Terraform으로만 만들고 바꾼다. `terraform apply`는 infra
 
 ### 처음 만들 때
 
+AWS 계정이 무료(Free) 플랜이면 RDS 자동 백업 보존 기간(7일)이 허용되지 않아 apply가 `FreeTierRestrictionError`로 멈춘다. 아래 결과의 `accountPlanType`이 `FREE`이면 apply 전에 [유료 플랜으로 올린다](https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/free-tier-plans.html). 유료 플랜은 무료 플랜으로 되돌릴 수 없다.
+
+```bash
+aws freetier get-account-plan-state --region us-east-1
+```
+
 1. state 버킷을 만든다.
 
    ```bash
@@ -109,18 +115,24 @@ AWS 자원은 Terraform으로만 만들고 바꾼다. `terraform apply`는 infra
 터널 토큰은 Terraform이 만들지도 읽지도 않아 state에 남지 않는다. apply가 끝난 뒤 운영자가 직접 넣는다.
 
 1. `terraform output tunnel_id`로 터널 ID를 확인한다.
-2. Cloudflare 대시보드 → Zero Trust → Networks → Tunnels에서 그 터널을 열고 **Install and run** 화면의 토큰(`--token` 뒤의 긴 문자열)을 복사한다.
+2. Cloudflare 대시보드 → Networking → Tunnels에서 그 터널을 열고, Overview 탭의 **Add a replica**에 나오는 설치 명령에서 `eyJ`로 시작하는 문자열(토큰)을 복사한다. 명령은 실행하지 않는다.
 3. Parameter Store에 넣는다. 배포 스크립트가 이 값을 읽어 `cloudflared`에 `TUNNEL_TOKEN`으로 넘긴다.
 
    ```bash
    aws ssm put-parameter --name /reposcope/tunnel-token --type SecureString --overwrite --value "<토큰>"
    ```
 
-4. apply 뒤 state에 터널 비밀값이 남지 않았는지 확인한다. 아래 결과에 `tunnel_secret`이 나오면 안 된다.
+4. apply 뒤 state에 터널 비밀값이 남지 않았는지 확인한다. state에는 `tunnel_secret`이라는 항목이 있지만 값이 `null`이어야 한다(값이 `null`이 아니면 비밀값이 남은 것이다). 값을 화면에 출력하지 않으려면 `null`인 줄이 있는지만 센다.
 
    ```bash
-   terraform state pull | grep -i -E "tunnel_secret|token"
+   terraform state pull | grep -c '"tunnel_secret": null'
    ```
+
+   ```powershell
+   (terraform state pull | Select-String -Pattern '"tunnel_secret": null').Count
+   ```
+
+   결과가 `1`이면 정상이고 `0`이면 비밀값이 남은 것이다(비밀값을 공유하지 말고 아래 절차로 간다).
 
    비밀값이 남으면 Terraform으로 터널을 만들지 않는다. 대시보드에서 터널만 만들고 그 ID를 `terraform.tfvars`의 `cloudflare_tunnel_id`에 넣은 뒤 다시 apply한다. 공개 주소와 DNS는 그대로 Terraform이 만든다.
 
