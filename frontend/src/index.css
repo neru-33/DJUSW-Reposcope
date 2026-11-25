@@ -136,6 +136,51 @@
   padding: 24px;
 }
 
+/* 입력 화면: 폼과 오른쪽 안내를 7:5로 나눈다. 900px 이하에서는 한 칸으로 쌓는다. 기준: docs/ui-guide.md 6장 */
+.form-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  gap: 24px;
+  align-items: start;
+}
+
+/* 이름-값 안내 목록 */
+.notice-list {
+  margin: 16px 0 0;
+}
+
+.notice-list > div + div {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid #e8edf3;
+}
+
+.notice-list dt {
+  color: #5a6b82;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.notice-list dd {
+  margin: 4px 0 0;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* V-1 수집 범위의 두 칸 */
+.start-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+}
+
+@media (max-width: 900px) {
+  .form-layout,
+  .start-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 /* 좁은 화면에서도 상단바를 한 줄로 유지한다. */
 @media (max-width: 1080px) {
   .header-inner {

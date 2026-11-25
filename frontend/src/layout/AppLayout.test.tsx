@@ -57,7 +57,7 @@ describe('화면 틀', () => {
     signedOut()
     const router = renderAt('/projects')
 
-    expect(await screen.findByRole('heading', { name: 'V-1 시작' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { level: 1, name: /캡스톤디자인 프로젝트/ })).toBeTruthy()
     expect(router.state.location.search).toBe('?next=%2Fprojects')
     const login = screen.getByRole('link', { name: 'GitHub 로그인' })
     expect(login.getAttribute('href')).toBe('/auth/github/login?next=%2Fprojects')
@@ -78,7 +78,7 @@ describe('화면 틀', () => {
     signedIn('GUEST')
     renderAt('/projects/1')
 
-    expect(await screen.findByRole('heading', { name: 'V-2 가입' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { level: 1, name: '가입' })).toBeTruthy()
   })
 
   it('직위가 맞지 않으면 권한 없음 화면을 보여 준다', async () => {
