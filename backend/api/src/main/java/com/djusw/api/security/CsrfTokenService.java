@@ -4,7 +4,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.stereotype.Component;
 
-/** Supplies the request token to the future /api/me and operator login responses. */
+/** Supplies the request token to current-user and operator login responses. */
 @Component
 public class CsrfTokenService {
     public String tokenFor(HttpServletRequest request) {

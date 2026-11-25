@@ -201,9 +201,10 @@ gh variable set DB_HOST --body "$(terraform output -raw db_address)"
 gh variable set WEB_BUCKET --body "$(terraform output -raw web_bucket_name)"
 gh variable set CLOUDFRONT_DISTRIBUTION_ID --body "$(terraform output -raw web_distribution_id)"
 gh variable set GH_APP_ID --body "<GitHub App ID>"
+gh variable set GH_CLIENT_ID --body "<GitHub App Client ID>"
 ```
 
-변수 이름은 `GITHUB_`로 시작할 수 없어 앱 ID는 `GH_APP_ID`로 둔다. 인스턴스가 교체되면(`terraform apply`로 EC2가 새로 만들어지면) `INSTANCE_ID`를 다시 넣는다.
+변수 이름은 `GITHUB_`로 시작할 수 없어 앱 ID와 Client ID는 `GH_APP_ID`, `GH_CLIENT_ID`로 둔다. 인스턴스가 교체되면(`terraform apply`로 EC2가 새로 만들어지면) `INSTANCE_ID`를 다시 넣는다.
 
 **되돌리기**: Actions → deploy → Run workflow에서 `image_tag`에 이전 태그를 넣는다. 이미지와 화면은 새로 만들지 않고 그 태그로 EC2만 다시 배포한다. 화면은 되돌리지 않으므로, 화면도 되돌려야 하면 그 커밋을 다시 `main`에 반영한다. 태그는 ECR에서 확인한다.
 
@@ -232,8 +233,8 @@ EC2 역할에는 GitHub App 키를 읽는 권한이 있다. 인스턴스 메타�
 | worker | `WORKER_IMAGE`로 받은 이미지. 시작할 때 수집·계정 마이그레이션을 적용한다. EC2 역할의 자격 증명으로 SQS와 S3에 접근하므로 `edge` 네트워크에 넣지 않는다 |
 | api | `API_IMAGE`로 받은 이미지. 8080은 호스트에 열지 않고 `expose`만 한다 |
 | cloudflared | Cloudflare로 먼저 연결해 터널을 만든다. 요청은 `http://api:8080`으로 넘긴다. 자동으로 다시 시작한다 |
-| api 환경 변수 | `SESSION_COOKIE_SECURE=true`, `CORS_ALLOWED_ORIGIN`과 `FRONTEND_URL`은 `https://www.eclipse-sync.com` |
-| 비밀값 | `DB_PASSWORD`, `TUNNEL_TOKEN`은 파일에 쓰지 않는다. 배포 스크립트가 Parameter Store에서 읽어 환경 변수로 넘긴다. GitHub App 키(`github-app-key`)는 `/etc/<name_prefix>/secrets/github-app-key`(root 소유, worker만 읽는 권한)에 파일로 두고 worker에 읽기 전용으로 붙인다 |
+| api 환경 변수 | `SESSION_COOKIE_SECURE=true`, `CORS_ALLOWED_ORIGIN`과 `FRONTEND_URL`은 `https://www.eclipse-sync.com`. `GITHUB_CLIENT_ID`와 `GITHUB_CALLBACK_URL`은 GitHub App 사용자 인증에 쓴다 |
+| 비밀값 | `DB_PASSWORD`, `TUNNEL_TOKEN`, `GITHUB_CLIENT_SECRET`은 파일에 쓰지 않는다. 배포 스크립트가 Parameter Store에서 읽어 환경 변수로 넘긴다. GitHub App 키(`github-app-key`)는 `/etc/<name_prefix>/secrets/github-app-key`(root 소유, worker만 읽는 권한)에 파일로 두고 worker에 읽기 전용으로 붙인다 |
 | 터널 토큰 | Terraform이 만들지 않는다. 운영자가 Cloudflare 대시보드에서 복사해 Parameter Store(SecureString)에 넣는다 |
 
 **IMDS 차단**: api와 `cloudflared`는 고정 대역(`172.28.0.0/24`)의 `edge` 네트워크만 쓴다. EC2의 user_data가 설치하는 systemd 단위(`<name_prefix>-block-imds.service`)가 부팅할 때마다 `docker.service`보다 먼저 이 대역에서 `169.254.169.254`로 가는 요청을 막는 규칙을 DOCKER-USER 체인에 넣는다. 재부팅이나 중지 후 시작에도 컨테이너가 뜨기 전에 규칙이 적용되므로 따로 실행할 것이 없다. 규칙을 넣지 못하면 Docker도 시작하지 않으므로, 컨테이너가 모두 멈춰 있으면 `systemctl status <name_prefix>-block-imds.service`부터 확인한다. worker는 EC2 역할이 필요하므로 이 네트워크에 넣지 않는다.
@@ -243,7 +244,7 @@ EC2 역할에는 GitHub App 키를 읽는 권한이 있다. 인스턴스 메타�
 EC2에서 root로 실행한다. `compose.yml`과 같은 폴더에 있어야 한다.
 
 ```bash
-sudo DB_HOST=<RDS 주소> GITHUB_APP_ID=<앱 ID> ./deploy.sh <이미지 태그>
+sudo DB_HOST=<RDS 주소> GITHUB_APP_ID=<앱 ID> GITHUB_CLIENT_ID=<Client ID> ./deploy.sh <이미지 태그>
 ```
 
 | 입력 | 내용 |
@@ -251,13 +252,14 @@ sudo DB_HOST=<RDS 주소> GITHUB_APP_ID=<앱 ID> ./deploy.sh <이미지 태그>
 | 이미지 태그 | 필수. `latest`는 쓰지 않는다. api와 worker가 같은 태그를 쓰고 `APP_VERSION`(`/api/version`)도 이 값이다 |
 | `DB_HOST` | 필수. `terraform output db_address` 값 |
 | `GITHUB_APP_ID` | 선택. 비우면 worker의 GitHub 연동만 꺼진다 |
+| `GITHUB_CLIENT_ID` | 필수. 학생 로그인에 사용할 GitHub App의 Client ID |
 | `NAME_PREFIX` | 선택. 기본 `reposcope`. DB 이름·사용자, SQS 큐, 원본 버킷, ECR 저장소, Parameter Store 경로를 만드는 데 쓴다 |
 | `DB_NAME`, `DB_USER`, `QUEUE_URL`, `RAW_BUCKET`, `AWS_REGION` | 선택. 비우면 `NAME_PREFIX`, 계정 ID, 인스턴스 리전에서 만든다 |
 
 순서는 다음과 같고, 한 단계라도 실패하면 멈추고 종료 코드 1을 돌려준다(Actions가 이 결과를 기다린다).
 
 1. `<name_prefix>-block-imds.service`가 `active`이고 DOCKER-USER에 차단 규칙이 있는지 확인한다. 없으면 컨테이너를 띄우지 않는다.
-2. Parameter Store에서 `db-password`, `tunnel-token`, `github-app-key`를 읽는다. 값이 비었거나 초기값 `CHANGE_ME`이면 멈춘다. 값은 화면에 출력하지 않고 명령 인자로도 넘기지 않는다.
+2. Parameter Store에서 `db-password`, `tunnel-token`, `github-app-key`, `github-client-secret`을 읽는다. 값이 비었거나 초기값 `CHANGE_ME`이면 멈춘다. 값은 화면에 출력하지 않고 명령 인자로도 넘기지 않는다.
 3. ECR에 로그인해 이미지를 받는다. 로그인 정보는 임시 폴더에 두고 끝나면 지운다.
 4. worker를 다시 만들어 시작하고, 마이그레이션이 끝나 로그에 `worker_started`가 나올 때까지 기다린다(기본 180초).
 5. api와 `cloudflared`를 시작하고 api의 `Started` 로그를 기다린다. 터널 연결(`Registered tunnel connection`)이 60초 안에 확인되지 않으면 경고만 남긴다. 공개 주소 확인은 호출한 쪽에서 `https://api.eclipse-sync.com/api/version`으로 한다.

@@ -55,6 +55,9 @@ services:
       SESSION_COOKIE_SECURE: "true"
       CORS_ALLOWED_ORIGIN: https://www.eclipse-sync.com
       FRONTEND_URL: https://www.eclipse-sync.com
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:?GITHUB_CLIENT_ID를 설정한다}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:?GITHUB_CLIENT_SECRET을 설정한다}
+      GITHUB_CALLBACK_URL: https://api.eclipse-sync.com/auth/github/callback
     # worker를 먼저 시작한다(마이그레이션이 끝났는지는 기다리지 않는다. deploy.sh가 기다린다).
     depends_on:
       - worker

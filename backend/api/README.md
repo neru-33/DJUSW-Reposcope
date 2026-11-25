@@ -6,7 +6,11 @@ Java 21과 PostgreSQL을 사용한다. 환경 변수를 설정한 뒤 `./gradlew
 
 세션 쿠키의 `Secure` 속성은 `SESSION_COOKIE_SECURE` 환경 변수로 설정한다. 기본값은 `false`이며 HTTPS 배포 환경에서는 `true`로 설정한다.
 
-`CORS_ALLOWED_ORIGIN`은 자격 증명을 허용할 화면 출처 하나이며 기본값은 `http://localhost:5173`이다. 운영 환경에서는 `https://www.eclipse-sync.com`으로 설정한다. `FRONTEND_URL`은 로그인 후 이동할 화면 주소로, 기본값은 `http://localhost:5173`이며 운영 환경에서는 `https://www.eclipse-sync.com`으로 설정한다. 실제 GitHub 로그인 콜백은 아직 구현되지 않았으므로 콜백 구현 시 이 설정과 상대 경로 `next` 검증을 연결해야 한다.
+학생 세션은 로그인 시점부터 최대 8시간 유지되고, 로그아웃하면 무효화된다. `GET /api/me`의 `csrf_token`을 `POST /auth/logout`을 포함한 쓰기 요청의 `X-CSRF-Token` 헤더로 보낸다.
+
+`CORS_ALLOWED_ORIGIN`은 자격 증명을 허용할 화면 출처 하나이며 기본값은 `http://localhost:5173`이다. 운영 환경에서는 `https://www.eclipse-sync.com`으로 설정한다. `FRONTEND_URL`은 로그인 후 이동할 화면 주소로, 기본값은 `http://localhost:5173`이며 운영 환경에서는 `https://www.eclipse-sync.com`으로 설정한다.
+
+GitHub 사용자 인증에는 `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `GITHUB_CALLBACK_URL` 환경 변수를 사용한다. 콜백 URL은 GitHub App에 등록된 주소와 같아야 하며 로컬 기본값은 `http://localhost:8080/auth/github/callback`이다. 사용자 토큰은 인증 중 사용자 정보와 GitHub App 설치 저장소 조회에만 사용한다. 설치 및 저장소 목록을 모두 조회한 후 접근 가능 목록을 갱신한다. 조회가 실패하면 로그인도 실패하고 기존 목록은 유지된다. 계정 테이블의 스키마는 `INGEST_SCHEMA`로 지정하며 기본값은 `public`이다. 로컬 compose의 API에 값을 전달하려면 `.env`에 설정한다. Client secret은 저장소에 올리지 않는다.
 
 사용자 IP는 신뢰할 수 있는 프록시가 전달한 `CF-Connecting-IP`에서 읽는다. 운영 API는 Cloudflare Tunnel을 거치지 않은 외부 요청을 받지 않아야 한다.
 
@@ -25,7 +29,7 @@ PostgreSQL 연결을 위해 다음 환경 변수를 실행 환경에 설정한�
 
 ## 공통 인증과 권한
 
-Spring Security는 `/api/health`, `/api/version`, GitHub 로그인 시작·콜백, 운영자 로그인 요청을 공개하고 나머지 요청에는 인증을 요구한다. 현재 로그인 API는 구현되어 있지 않다. 학생 로그인(T-20)과 운영자 로그인(T-24)은 아래 계약에 맞춰 인증을 연결한다.
+Spring Security는 `/api/health`, `/api/version`, GitHub 로그인 시작·콜백, 운영자 로그인 요청을 공개하고 나머지 요청에는 인증을 요구한다. 학생 로그인은 GitHub 인증 결과를 세션에 연결한다. 운영자 로그인(T-24)은 아래 계약에 맞춰 인증을 연결한다.
 
 ### 로그인과 세션 연결
 

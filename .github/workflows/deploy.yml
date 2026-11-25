@@ -9,6 +9,7 @@
 #   variable WEB_BUCKET                   terraform output web_bucket_name
 #   variable CLOUDFRONT_DISTRIBUTION_ID   terraform output web_distribution_id
 #   variable GH_APP_ID                    GitHub App ID(비우면 worker의 GitHub 연동이 꺼진다)
+#   variable GH_CLIENT_ID                 GitHub App Client ID(학생 로그인)
 name: deploy
 
 on:
@@ -104,6 +105,7 @@ jobs:
       INSTANCE_ID: ${{ vars.INSTANCE_ID }}
       DB_HOST: ${{ vars.DB_HOST }}
       GH_APP_ID: ${{ vars.GH_APP_ID }}
+      GH_CLIENT_ID: ${{ vars.GH_CLIENT_ID }}
       INPUT_TAG: ${{ inputs.image_tag }}
     steps:
       - uses: actions/checkout@v7
@@ -120,6 +122,7 @@ jobs:
           [[ "${INSTANCE_ID}" =~ ^i-[0-9a-f]+$ ]] || { echo "variable INSTANCE_ID가 없거나 올바르지 않다" >&2; exit 1; }
           [[ "${DB_HOST}" =~ ^[A-Za-z0-9.-]+$ ]] || { echo "variable DB_HOST가 없거나 올바르지 않다" >&2; exit 1; }
           [[ "${GH_APP_ID}" =~ ^[0-9]*$ ]] || { echo "variable GH_APP_ID는 숫자여야 한다" >&2; exit 1; }
+          [[ "${GH_CLIENT_ID}" =~ ^[A-Za-z0-9.]+$ ]] || { echo "variable GH_CLIENT_ID가 없거나 올바르지 않다" >&2; exit 1; }
           echo "TAG=${tag}" >> "$GITHUB_ENV"
       # compose.yml과 deploy.sh를 명령에 담아 보내므로 EC2는 항상 이 커밋의 파일로 배포한다.
       - name: 배포 명령 보내기
@@ -138,6 +141,7 @@ jobs:
                   ("NAME_PREFIX", prefix),
                   ("DB_HOST", os.environ["DB_HOST"]),
                   ("GITHUB_APP_ID", os.environ["GH_APP_ID"]),
+                  ("GITHUB_CLIENT_ID", os.environ["GH_CLIENT_ID"]),
               )
           )
           commands = [

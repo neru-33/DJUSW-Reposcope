@@ -12,7 +12,7 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
-import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -65,16 +65,16 @@ class ForwardedIpTests {
     @Test
     void tomcatUsesCloudflareHeaderInsteadOfForwardedFor() throws Exception {
         var client = HttpClient.newHttpClient();
-        var uri = URI.create("http://127.0.0.1:" + port + "/auth/github/callback");
+        var uri = URI.create("http://127.0.0.1:" + port + "/auth/admin/login");
         var withBoth = HttpRequest.newBuilder(uri)
                 .header("CF-Connecting-IP", "203.0.113.10")
-                .header("X-Forwarded-For", "198.51.100.20").GET().build();
+                .header("X-Forwarded-For", "198.51.100.20").POST(HttpRequest.BodyPublishers.noBody()).build();
         var response = client.send(withBoth, HttpResponse.BodyHandlers.ofString());
         assertEquals(200, response.statusCode());
         assertEquals("203.0.113.10", response.body());
 
         var withForwardedForOnly = HttpRequest.newBuilder(uri)
-                .header("X-Forwarded-For", "198.51.100.20").GET().build();
+                .header("X-Forwarded-For", "198.51.100.20").POST(HttpRequest.BodyPublishers.noBody()).build();
         var withoutCloudflare = client.send(withForwardedForOnly, HttpResponse.BodyHandlers.ofString());
         assertEquals(200, withoutCloudflare.statusCode());
         assertNotEquals("198.51.100.20", withoutCloudflare.body());
@@ -88,7 +88,7 @@ class ForwardedIpTests {
 
     @RestController
     static class IpController {
-        @GetMapping("/auth/github/callback")
+        @PostMapping("/auth/admin/login")
         String remoteAddress(HttpServletRequest request) { return request.getRemoteAddr(); }
     }
 }

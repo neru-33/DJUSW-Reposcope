@@ -52,6 +52,11 @@ services:
     environment:
       <<: *db
       CAPSTONE_SCHEMA: ${CAPSTONE_SCHEMA:-capstone}
+      INGEST_SCHEMA: ${INGEST_SCHEMA:-public}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
+      GITHUB_CALLBACK_URL: ${GITHUB_CALLBACK_URL:-http://localhost:8080/auth/github/callback}
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
       APP_VERSION: ${APP_VERSION:-local}
     ports:
       - "127.0.0.1:8080:8080"
