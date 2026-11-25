@@ -3,7 +3,7 @@
 #
 # 역할은 var.github_repository의 var.github_branch 브랜치에서 실행된 워크플로만 맡을 수 있다.
 # 다른 저장소, 다른 브랜치, 포크의 풀 리퀘스트는 맡지 못한다.
-# 권한: ECR 이미지 올리기, 이 EC2 한 대에 배포 명령 보내기와 결과 읽기. 화면 업로드와 캐시 무효화 권한은 웹 구성과 함께 추가한다.
+# 권한: ECR 이미지 올리기, 이 EC2 한 대에 배포 명령 보내기와 결과 읽기, 웹 버킷에 화면 올리기, 이 CloudFront 배포의 캐시 무효화.
 
 data "aws_caller_identity" "current" {}
 
@@ -87,6 +87,26 @@ data "aws_iam_policy_document" "deploy" {
     sid       = "ReadCommandResult"
     actions   = ["ssm:GetCommandInvocation", "ssm:ListCommandInvocations"]
     resources = ["*"]
+  }
+
+  # 화면 파일 올리기(aws s3 sync --delete). 이 버킷 하나에만 쓸 수 있고 읽기 권한은 주지 않는다.
+  statement {
+    sid       = "WebBucketList"
+    actions   = ["s3:ListBucket"]
+    resources = [var.web_bucket_arn]
+  }
+
+  statement {
+    sid       = "WebBucketWrite"
+    actions   = ["s3:PutObject", "s3:DeleteObject"]
+    resources = ["${var.web_bucket_arn}/*"]
+  }
+
+  # 이 배포 하나의 캐시만 무효화할 수 있다.
+  statement {
+    sid       = "InvalidateWebCache"
+    actions   = ["cloudfront:CreateInvalidation"]
+    resources = [var.cloudfront_distribution_arn]
   }
 }
 

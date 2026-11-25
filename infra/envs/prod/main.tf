@@ -115,4 +115,7 @@ module "github_oidc" {
   oidc_provider_arn   = var.github_oidc_provider_arn
   ecr_repository_arns = module.ecr.repository_arns
   instance_id         = module.app.instance_id
+
+  web_bucket_arn              = module.web.bucket_arn
+  cloudfront_distribution_arn = module.web.distribution_arn
 }

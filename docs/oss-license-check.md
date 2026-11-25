@@ -34,6 +34,7 @@
 | jsdom | 31.0.1 | [npm](https://www.npmjs.com/package/jsdom/v/31.0.1) | MIT | 화면 테스트의 브라우저 환경 | 개발 도구. 빌드 결과에 포함되지 않음 |
 | Testing Library (`@testing-library/react`, `dom`, `user-event`) | react 16.3.3, dom 10.4.2, user-event 14.6.12 | [npm](https://www.npmjs.com/package/@testing-library/react/v/16.3.3) | MIT | 화면 테스트 | 개발 도구. 빌드 결과에 포함되지 않음 |
 | actions/checkout, actions/setup-java, actions/setup-node | checkout v7, setup-java v6, setup-node v7 | [actions](https://github.com/actions) | MIT | CI 소스 내려받기와 실행 환경 준비 | CI 도구. 저장소 결과물에 포함되지 않음 |
+| aws-actions/configure-aws-credentials | v6 | [aws-actions/configure-aws-credentials](https://github.com/aws-actions/configure-aws-credentials) | Apache-2.0 | 배포 워크플로의 OIDC 임시 자격 증명 | CI 도구. 저장소 결과물에 포함되지 않음 |
 | gradle/actions (setup-gradle) | v6 | [gradle/actions](https://github.com/gradle/actions) | MIT(기본 캐시 `cache-provider: basic`만 사용) | CI의 Gradle 설정과 캐시 | CI 도구. 독점 구성 요소인 Enhanced Caching은 사용하지 않음 |
 
 - 위 항목은 직접 사용한 주요 구성 요소다. 간접 의존성, 테스트 의존성과 컨테이너 이미지에 포함된 구성 요소의 라이선스·고지 사항은 배포 전에 추가 확인한다.
