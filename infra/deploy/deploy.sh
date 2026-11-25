@@ -175,7 +175,7 @@ else
   log "경고: ${TUNNEL_WAIT_SECONDS}초 안에 터널 연결 로그가 나오지 않았다. 터널 토큰과 Cloudflare 상태를 확인한다"
 fi
 
-# 7일 넘게 쓰지 않은 이미지만 지운다. 이전 태그는 ECR에서 다시 받을 수 있다.
+# 만든 지 7일이 지났고 지금 컨테이너가 쓰지 않는 이미지만 지운다(until은 이미지를 만든 시각 기준). 이전 태그는 ECR에서 다시 받을 수 있다.
 docker image prune -af --filter "until=168h" >/dev/null || true
 
 ensure_running cloudflared

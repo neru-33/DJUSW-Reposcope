@@ -192,7 +192,7 @@ sudo DB_HOST=<RDS 주소> GITHUB_APP_ID=<앱 ID> ./deploy.sh <이미지 태그>
 3. ECR에 로그인해 이미지를 받는다. 로그인 정보는 임시 폴더에 두고 끝나면 지운다.
 4. worker를 다시 만들어 시작하고, 마이그레이션이 끝나 로그에 `worker_started`가 나올 때까지 기다린다(기본 180초).
 5. api와 `cloudflared`를 시작하고 api의 `Started` 로그를 기다린다. 터널 연결(`Registered tunnel connection`)이 60초 안에 확인되지 않으면 경고만 남긴다. 공개 주소 확인은 호출한 쪽에서 `https://api.eclipse-sync.com/api/version`으로 한다.
-6. 7일 넘게 쓰지 않은 이미지를 정리한다.
+6. 만든 지 7일이 지났고 지금 컨테이너가 쓰지 않는 이미지를 정리한다.
 
 **이전 버전으로 되돌리기**: 이전 이미지 태그로 같은 명령을 다시 실행한다. 태그는 덮어쓸 수 없으므로 같은 태그는 항상 같은 이미지다. ECR에는 최근 10개가 남는다.
 
