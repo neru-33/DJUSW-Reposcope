@@ -156,26 +156,54 @@ EC2 역할에는 GitHub App 키를 읽는 권한이 있다. 인스턴스 메타�
 
 ### 운영 배포 설정
 
-`infra/deploy/compose.yml`이 EC2에서 api와 `cloudflared`를 실행한다. worker와 배포 자동화(CD)는 #75에서 추가한다.
+`infra/deploy/compose.yml`이 EC2에서 worker, api, `cloudflared`를 실행하고, 같은 폴더의 `deploy.sh`가 비밀값을 읽어 이 파일을 실행한다. GitHub Actions로 자동 배포하는 워크플로는 #75의 이어지는 PR에서 추가한다.
 
 | 항목 | 내용 |
 |---|---|
+| worker | `WORKER_IMAGE`로 받은 이미지. 시작할 때 수집·계정 마이그레이션을 적용한다. EC2 역할의 자격 증명으로 SQS와 S3에 접근하므로 `edge` 네트워크에 넣지 않는다 |
 | api | `API_IMAGE`로 받은 이미지. 8080은 호스트에 열지 않고 `expose`만 한다 |
 | cloudflared | Cloudflare로 먼저 연결해 터널을 만든다. 요청은 `http://api:8080`으로 넘긴다. 자동으로 다시 시작한다 |
 | api 환경 변수 | `SESSION_COOKIE_SECURE=true`, `CORS_ALLOWED_ORIGIN`과 `FRONTEND_URL`은 `https://www.eclipse-sync.com` |
-| 비밀값 | `DB_PASSWORD`, `TUNNEL_TOKEN`은 파일에 쓰지 않는다. 배포 스크립트가 Parameter Store에서 읽어 환경 변수로 넘긴다 |
+| 비밀값 | `DB_PASSWORD`, `TUNNEL_TOKEN`은 파일에 쓰지 않는다. 배포 스크립트가 Parameter Store에서 읽어 환경 변수로 넘긴다. GitHub App 키(`github-app-key`)는 `/etc/<name_prefix>/secrets/github-app-key`(root 소유, worker만 읽는 권한)에 파일로 두고 worker에 읽기 전용으로 붙인다 |
 | 터널 토큰 | Terraform이 만들지 않는다. 운영자가 Cloudflare 대시보드에서 복사해 Parameter Store(SecureString)에 넣는다 |
 
 **IMDS 차단**: api와 `cloudflared`는 고정 대역(`172.28.0.0/24`)의 `edge` 네트워크만 쓴다. EC2의 user_data가 설치하는 systemd 단위(`<name_prefix>-block-imds.service`)가 부팅할 때마다 `docker.service`보다 먼저 이 대역에서 `169.254.169.254`로 가는 요청을 막는 규칙을 DOCKER-USER 체인에 넣는다. 재부팅이나 중지 후 시작에도 컨테이너가 뜨기 전에 규칙이 적용되므로 따로 실행할 것이 없다. 규칙을 넣지 못하면 Docker도 시작하지 않으므로, 컨테이너가 모두 멈춰 있으면 `systemctl status <name_prefix>-block-imds.service`부터 확인한다. worker는 EC2 역할이 필요하므로 이 네트워크에 넣지 않는다.
 
+#### 배포 스크립트(`deploy.sh`)
+
+EC2에서 root로 실행한다. `compose.yml`과 같은 폴더에 있어야 한다.
+
 ```bash
-docker compose -f infra/deploy/compose.yml up -d
+sudo DB_HOST=<RDS 주소> GITHUB_APP_ID=<앱 ID> ./deploy.sh <이미지 태그>
 ```
+
+| 입력 | 내용 |
+|---|---|
+| 이미지 태그 | 필수. `latest`는 쓰지 않는다. api와 worker가 같은 태그를 쓰고 `APP_VERSION`(`/api/version`)도 이 값이다 |
+| `DB_HOST` | 필수. `terraform output db_address` 값 |
+| `GITHUB_APP_ID` | 선택. 비우면 worker의 GitHub 연동만 꺼진다 |
+| `NAME_PREFIX` | 선택. 기본 `reposcope`. DB 이름·사용자, SQS 큐, 원본 버킷, ECR 저장소, Parameter Store 경로를 만드는 데 쓴다 |
+| `DB_NAME`, `DB_USER`, `QUEUE_URL`, `RAW_BUCKET`, `AWS_REGION` | 선택. 비우면 `NAME_PREFIX`, 계정 ID, 인스턴스 리전에서 만든다 |
+
+순서는 다음과 같고, 한 단계라도 실패하면 멈추고 종료 코드 1을 돌려준다(Actions가 이 결과를 기다린다).
+
+1. `<name_prefix>-block-imds.service`가 `active`이고 DOCKER-USER에 차단 규칙이 있는지 확인한다. 없으면 컨테이너를 띄우지 않는다.
+2. Parameter Store에서 `db-password`, `tunnel-token`, `github-app-key`를 읽는다. 값이 비었거나 초기값 `CHANGE_ME`이면 멈춘다. 값은 화면에 출력하지 않고 명령 인자로도 넘기지 않는다.
+3. ECR에 로그인해 이미지를 받는다. 로그인 정보는 임시 폴더에 두고 끝나면 지운다.
+4. worker를 다시 만들어 시작하고, 마이그레이션이 끝나 로그에 `worker_started`가 나올 때까지 기다린다(기본 180초).
+5. api와 `cloudflared`를 시작하고 api의 `Started` 로그를 기다린다. 터널 연결(`Registered tunnel connection`)이 60초 안에 확인되지 않으면 경고만 남긴다. 공개 주소 확인은 호출한 쪽에서 `https://api.eclipse-sync.com/api/version`으로 한다.
+6. 7일 넘게 쓰지 않은 이미지를 정리한다.
+
+**이전 버전으로 되돌리기**: 이전 이미지 태그로 같은 명령을 다시 실행한다. 태그는 덮어쓸 수 없으므로 같은 태그는 항상 같은 이미지다. ECR에는 최근 10개가 남는다.
+
+이 스크립트를 처음 쓸 때는 EC2에 `compose.yml`과 `deploy.sh`를 같은 폴더에 두고 위 명령으로 한 번 실행한다. 배포 워크플로가 생기면 이 두 파일을 워크플로가 올린다.
+
+EC2가 재부팅되면 `restart: unless-stopped`로 컨테이너가 다시 뜬다. 이때 worker와 api는 동시에 시작하므로, 마이그레이션이 필요한 새 버전은 재부팅이 아니라 `deploy.sh`로 배포한다.
 
 **apply 후 확인**:
 
 1. EC2에서 `systemctl is-active <name_prefix>-block-imds.service`가 `active`이고 `sudo iptables -S DOCKER-USER`에 `-s 172.28.0.0/24 -d 169.254.169.254/32 -j DROP`이 있다.
-2. api 컨테이너에서 `169.254.169.254`에 접근되지 않는다.
+2. api 컨테이너에서 `169.254.169.254`에 접근되지 않는다. api 이미지에는 `curl`이 없을 수 있으므로, 컨테이너 안에서 사용할 수 있는 도구로 `169.254.169.254` 연결을 시도해 응답이 없는지 확인한다.
 3. EC2를 재부팅한 뒤에도 api 컨테이너에서 `169.254.169.254`에 접근되지 않는다.
 
 문법만 확인하려면 값을 임시로 채워 `docker compose -f infra/deploy/compose.yml config`를 실행한다.

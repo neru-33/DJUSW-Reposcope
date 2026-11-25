@@ -1,12 +1,43 @@
-# 운영(EC2) 배포 설정: api와 cloudflared.
-# worker와 배포 자동화(CD)는 #75에서 이어서 추가한다. 사용법은 infra/README.md의 "운영 배포 설정".
+# 운영(EC2) 배포 설정: worker, api, cloudflared.
+# 사용법은 infra/README.md의 "운영 배포 설정". 보통은 같은 폴더의 deploy.sh가 이 파일을 실행한다.
 #
 # 배포 스크립트가 Parameter Store에서 비밀값을 읽어 환경 변수로 넘긴다. 이 파일에는 값을 쓰지 않는다.
 #   docker compose -f infra/deploy/compose.yml up -d   (IMDS 차단은 EC2 user_data의 systemd 단위가 부팅 때 적용한다)
+#
+# 시작 순서: worker가 먼저 시작해 수집·계정 마이그레이션을 적용한 뒤 api가 시작해야 한다.
+# compose는 "시작"까지만 기다리므로 마이그레이션이 끝난 것(로그의 worker_started)을 기다리는 일은 deploy.sh가 한다.
 
 name: reposcope
 
 services:
+  # SQS 메시지를 읽어 S3 원본을 가져오고 수집 테이블에 저장한다. 시작할 때 backend/migrations를 적용한다.
+  # AWS 접근은 EC2 역할의 자격 증명(IMDS)을 쓴다. 그래서 IMDS를 막은 edge 네트워크에 넣지 않고 기본 네트워크를 쓴다.
+  worker:
+    image: ${WORKER_IMAGE:?WORKER_IMAGE에 이미지 주소와 태그를 설정한다}
+    environment:
+      DB_HOST: ${DB_HOST:?DB_HOST를 설정한다}
+      DB_PORT: "5432"
+      DB_NAME: ${DB_NAME:?DB_NAME을 설정한다}
+      DB_USER: ${DB_USER:?DB_USER를 설정한다}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD를 설정한다}
+      DB_SSLMODE: require
+      QUEUE_URL: ${QUEUE_URL:?QUEUE_URL을 설정한다}
+      RAW_BUCKET: ${RAW_BUCKET:?RAW_BUCKET을 설정한다}
+      AWS_REGION: ${AWS_REGION:?AWS_REGION을 설정한다}
+      # 비우면 GitHub 연동만 꺼지고 payload에 들어 있는 저장소만 저장한다.
+      GITHUB_APP_ID: ${GITHUB_APP_ID:-}
+      GITHUB_APP_PRIVATE_KEY_FILE: /run/secrets/github-app-key
+      APP_VERSION: ${APP_VERSION:?APP_VERSION에 이미지 태그와 같은 값을 설정한다}
+    volumes:
+      # 키 파일은 deploy.sh가 Parameter Store에서 읽어 만든다. 파일이 없을 때 폴더를 만들어 버리지 않도록 create_host_path를 끈다.
+      - type: bind
+        source: ${GITHUB_APP_KEY_FILE:?GITHUB_APP_KEY_FILE에 키 파일 경로를 설정한다}
+        target: /run/secrets/github-app-key
+        read_only: true
+        bind:
+          create_host_path: false
+    restart: unless-stopped
+
   api:
     # CD가 만든 이미지를 쓴다. latest 태그는 쓰지 않는다.
     image: ${API_IMAGE:?API_IMAGE에 이미지 주소와 태그를 설정한다}
@@ -24,6 +55,9 @@ services:
       SESSION_COOKIE_SECURE: "true"
       CORS_ALLOWED_ORIGIN: https://www.eclipse-sync.com
       FRONTEND_URL: https://www.eclipse-sync.com
+    # worker를 먼저 시작한다(마이그레이션이 끝났는지는 기다리지 않는다. deploy.sh가 기다린다).
+    depends_on:
+      - worker
     networks: [edge]
     restart: unless-stopped
 
