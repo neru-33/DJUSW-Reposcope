@@ -153,7 +153,8 @@ jobs:
               "DocumentName": "AWS-RunShellScript",
               "Comment": f"deploy {os.environ['TAG']} ({os.environ['GITHUB_SHA'][:12]})",
               "TimeoutSeconds": 900,
-              "Parameters": {"commands": commands},
+              # 실행 시간 제한. 워크플로가 기다리는 시간(15분)과 같게 해, 워크플로가 실패한 뒤에도 EC2에서 스크립트가 계속 돌아 다음 배포와 겹치는 일을 막는다.
+              "Parameters": {"commands": commands, "executionTimeout": ["900"]},
           }))
           PY
           command_id="$(aws ssm send-command --cli-input-json file://command.json --query Command.CommandId --output text)"
@@ -223,10 +224,12 @@ jobs:
           set -euo pipefail
           [[ "${WEB_BUCKET}" =~ ^[a-z0-9][a-z0-9.-]{2,62}$ ]] || { echo "variable WEB_BUCKET이 없거나 올바르지 않다" >&2; exit 1; }
           # 파일 이름에 해시가 들어가는 파일은 오래 캐시하고, index.html은 항상 새로 받게 한다.
-          aws s3 sync dist "s3://${WEB_BUCKET}" --delete --exclude index.html \
+          # 순서: 새 파일 올리기 → index.html 바꾸기 → 이전 파일 지우기. 이전 파일을 먼저 지우면 그 사이 접속한 사람에게 빈 화면이 보인다.
+          aws s3 sync dist "s3://${WEB_BUCKET}" --exclude index.html \
             --cache-control "public,max-age=31536000,immutable"
           aws s3 cp dist/index.html "s3://${WEB_BUCKET}/index.html" \
             --cache-control "no-cache" --content-type "text/html; charset=utf-8"
+          aws s3 sync dist "s3://${WEB_BUCKET}" --delete --exclude index.html
       - name: 캐시 무효화
         run: |
           set -euo pipefail

@@ -186,7 +186,7 @@ CloudFront 배포는 만드는 데 5분에서 15분이 걸린다. 인증서 확�
 |---|---|
 | 이미지 | api, worker 이미지를 만들어 ECR에 올린다. 태그는 `sha-<커밋 앞 12자>`다. 태그는 덮어쓸 수 없으므로 이미 있으면 다시 만들지 않는다 |
 | 배포 | `compose.yml`과 `deploy.sh`를 SSM Run Command 명령에 담아 EC2로 보내 실행한다. 스크립트가 끝날 때까지 기다리고, 실패하면 이 단계도 실패한다. 끝나면 `https://api.eclipse-sync.com/api/version`이 새 태그를 돌려줄 때까지 기다린다 |
-| 화면 | api가 새 버전으로 올라온 뒤 화면을 빌드해(`VITE_API_BASE_URL=https://api.eclipse-sync.com`) 웹 버킷에 올리고 CloudFront 캐시를 무효화한다. 해시가 붙은 파일은 오래 캐시하고 `index.html`은 `no-cache`다 |
+| 화면 | api가 새 버전으로 올라온 뒤 화면을 빌드해(`VITE_API_BASE_URL=https://api.eclipse-sync.com`) 웹 버킷에 올리고 CloudFront 캐시를 무효화한다. 해시가 붙은 파일은 오래 캐시하고 `index.html`은 `no-cache`다. 새 파일 → `index.html` → 이전 파일 삭제 순서로 올려 중간에 빈 화면이 보이지 않게 한다 |
 
 AWS 자격 증명은 OIDC로 받는 임시 자격 증명뿐이다. 이 역할은 이 저장소의 `main`에서 실행된 워크플로만 맡을 수 있으므로 다른 브랜치에서 `workflow_dispatch`로 실행하면 역할을 맡지 못한다. 계정 ID는 로그에서 가려진다.
 
@@ -212,8 +212,8 @@ aws ecr describe-images --repository-name reposcope-api --query 'sort_by(imageDe
 
 **주의**
 - 수신 Lambda(`webhook/`)는 이 워크플로가 배포하지 않는다. 코드가 바뀌면 `terraform apply`로 배포한다.
-- `main`에 병합되기 전에 CI(`ci.yml`)가 통과하는 것은 브랜치 보호 규칙으로 보장해야 한다. 이 워크플로는 테스트를 다시 실행하지 않는다.
-- 첫 배포는 EC2에 이미지가 없으므로 이미지 빌드와 pull 시간이 걸린다(스크립트 대기 시간 기본 180초와 별개로 워크플로는 최대 15분 기다린다).
+- 저장소 규칙이 CI(`ci.yml`) 통과를 병합 조건으로 요구한다. 이 워크플로는 테스트를 다시 실행하지 않는다.
+- 첫 배포는 EC2에 이미지가 없으므로 이미지 빌드와 pull 시간이 걸린다(스크립트 대기 시간 기본 180초와 별개로 워크플로는 최대 15분 기다리고, EC2의 스크립트 실행 시간 제한(`executionTimeout`)도 15분이다).
 
 ### 컨테이너와 EC2 역할
 
@@ -224,7 +224,7 @@ EC2 역할에는 GitHub App 키를 읽는 권한이 있다. 인스턴스 메타�
 
 ### 운영 배포 설정
 
-`infra/deploy/compose.yml`이 EC2에서 worker, api, `cloudflared`를 실행하고, 같은 폴더의 `deploy.sh`가 비밀값을 읽어 이 파일을 실행한다. GitHub Actions로 자동 배포하는 워크플로는 #75의 이어지는 PR에서 추가한다.
+`infra/deploy/compose.yml`이 EC2에서 worker, api, `cloudflared`를 실행하고, 같은 폴더의 `deploy.sh`가 비밀값을 읽어 이 파일을 실행한다. GitHub Actions로 자동 배포하는 워크플로는 아래 "자동 배포"에서 설명한다.
 
 | 항목 | 내용 |
 |---|---|
@@ -264,7 +264,7 @@ sudo DB_HOST=<RDS 주소> GITHUB_APP_ID=<앱 ID> ./deploy.sh <이미지 태그>
 
 **이전 버전으로 되돌리기**: 이전 이미지 태그로 같은 명령을 다시 실행한다. 태그는 덮어쓸 수 없으므로 같은 태그는 항상 같은 이미지다. ECR에는 최근 10개가 남는다.
 
-이 스크립트를 처음 쓸 때는 EC2에 `compose.yml`과 `deploy.sh`를 같은 폴더에 두고 위 명령으로 한 번 실행한다. 배포 워크플로가 생기면 이 두 파일을 워크플로가 올린다.
+이 스크립트를 처음 쓸 때는 EC2에 `compose.yml`과 `deploy.sh`를 같은 폴더에 두고 위 명령으로 한 번 실행한다. 배포 워크플로는 이 두 파일을 명령에 담아 EC2에 올리고 실행한다.
 
 EC2가 재부팅되면 `restart: unless-stopped`로 컨테이너가 다시 뜬다. 이때 worker와 api는 동시에 시작하므로, 마이그레이션이 필요한 새 버전은 재부팅이 아니라 `deploy.sh`로 배포한다.
 
