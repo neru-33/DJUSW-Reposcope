@@ -13,6 +13,26 @@ variable "github_repository" {
   type        = string
 }
 
+variable "github_owner_id" {
+  description = "저장소 소유자의 GitHub 숫자 ID. 토큰의 sub에 들어간다"
+  type        = string
+
+  validation {
+    condition     = can(regex("^[0-9]+$", var.github_owner_id))
+    error_message = "github_owner_id는 숫자여야 합니다."
+  }
+}
+
+variable "github_repository_id" {
+  description = "저장소의 GitHub 숫자 ID. 토큰의 sub에 들어간다"
+  type        = string
+
+  validation {
+    condition     = can(regex("^[0-9]+$", var.github_repository_id))
+    error_message = "github_repository_id는 숫자여야 합니다."
+  }
+}
+
 variable "github_branch" {
   description = "배포 역할을 맡을 수 있는 브랜치. 이 브랜치의 워크플로만 AWS에 들어온다"
   type        = string

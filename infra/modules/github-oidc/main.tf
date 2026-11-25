@@ -2,6 +2,7 @@
 # 오래 쓰는 접근 키를 저장소 secret에 넣지 않는다.
 #
 # 역할은 var.github_repository의 var.github_branch 브랜치에서 실행된 워크플로만 맡을 수 있다.
+# 2026-07-15 이후 만든 저장소의 OIDC 토큰은 sub에 소유자 ID와 저장소 ID가 들어간다(repo:<소유자>@<ID>/<이름>@<ID>:...).
 # 다른 저장소, 다른 브랜치, 포크의 풀 리퀘스트는 맡지 못한다.
 # 권한: ECR 이미지 올리기, 이 EC2 한 대에 배포 명령 보내기와 결과 읽기, 웹 버킷에 화면 올리기, 이 CloudFront 배포의 캐시 무효화.
 
@@ -10,7 +11,8 @@ data "aws_caller_identity" "current" {}
 locals {
   create_provider = var.oidc_provider_arn == null
   provider_arn    = local.create_provider ? aws_iam_openid_connect_provider.github[0].arn : var.oidc_provider_arn
-  subject         = "repo:${var.github_repository}:ref:refs/heads/${var.github_branch}"
+  repo_parts      = split("/", var.github_repository)
+  subject         = "repo:${local.repo_parts[0]}@${var.github_owner_id}/${local.repo_parts[1]}@${var.github_repository_id}:ref:refs/heads/${var.github_branch}"
   instance_arn    = "arn:aws:ec2:${var.region}:${data.aws_caller_identity.current.account_id}:instance/${var.instance_id}"
   document_arn    = "arn:aws:ssm:${var.region}::document/AWS-RunShellScript"
 }

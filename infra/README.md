@@ -173,7 +173,8 @@ CloudFront 배포는 만드는 데 5분에서 15분이 걸린다. 인증서 확�
 
 배포 역할은 `github_repository`(기본 `neru-33/DJUSW-Reposcope`)의 **`main` 브랜치에서 실행된 워크플로만** 맡을 수 있다. 다른 저장소, 다른 브랜치, 포크의 풀 리퀘스트는 맡지 못한다. 권한은 ECR 이미지 올리기, 이 EC2 한 대에 배포 명령 보내기와 결과 읽기, 웹 버킷에 화면 올리기(읽기 권한 없음), 이 CloudFront 배포의 캐시 무효화로 제한한다.
 
-- 저장소 이름이 바뀌거나 조직으로 옮기면 `github_repository`를 바꿔 다시 apply한다. 값이 틀리면 Actions가 역할을 맡지 못한다.
+- 역할의 조건은 토큰의 `sub` 값 `repo:<소유자>@<소유자 ID>/<이름>@<저장소 ID>:ref:refs/heads/main`과 정확히 같아야 한다. 2026-07-15 이후 만든 저장소는 이 형식(소유자 ID와 저장소 ID 포함)을 쓴다. 값이 틀리면 Actions가 `Not authorized to perform sts:AssumeRoleWithWebIdentity`로 멈춘다.
+- 저장소 이름이 바뀌거나 조직으로 옮기면 `github_repository`, `github_owner_id`, `github_repository_id`를 확인해 다시 apply한다. ID는 `gh api repos/<소유자>/<이름> --jq '.owner.id, .id'`로 확인한다.
 - GitHub OIDC provider는 계정에 하나만 만들 수 있다. 이미 있으면 `terraform.tfvars`에 `github_oidc_provider_arn`을 넣는다.
 - 워크플로에서 `environment`를 쓰면 토큰의 `sub` 값이 달라지므로 역할의 조건도 함께 바꾼다.
 - 인프라를 종료할 때는 `ecr_force_delete = true`로 바꿔 apply한다.
