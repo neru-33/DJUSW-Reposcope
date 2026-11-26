@@ -1,4 +1,5 @@
 import { MantineProvider } from '@mantine/core'
+import { Notifications } from '@mantine/notifications'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { RouterProvider, createMemoryRouter } from 'react-router'
@@ -42,6 +43,7 @@ function renderAt(path: string) {
   const router = createMemoryRouter(routes, { initialEntries: [path] })
   render(
     <MantineProvider theme={theme}>
+      <Notifications />
       <RouterProvider router={router} />
     </MantineProvider>,
   )
@@ -97,11 +99,11 @@ describe('V-2 가입', () => {
     expect(screen.getByText('서비스 운영 종료일(2026년 12월 31일)까지. 종료 후 지체 없이 파기합니다.')).toBeTruthy()
   })
 
-  it('학번은 8자리 숫자만 받는다', async () => {
+  it.each(['2026abcd', '202612345'])('학번은 8자리 숫자만 받는다: %s', async (studentId) => {
     guestWith(() => new Response(null, { status: 204 }))
     renderAt('/signup')
 
-    await fill({ studentId: '2026abcd' })
+    await fill({ studentId })
 
     expect(screen.getByText('학번 8자리를 숫자로 입력하세요.')).toBeTruthy()
     expect(profileCalls()).toHaveLength(0)
@@ -166,15 +168,15 @@ describe('V-2 가입', () => {
     expect(await screen.findByText('동의해야 가입할 수 있습니다.')).toBeTruthy()
   })
 
-  it('가입할 수 없는 상태로 거부되면 사유를 폼 안에 보여 준다', async () => {
+  it('가입할 수 없는 상태로 거부되면 사유를 알리고 가입 화면에 남는다', async () => {
     guestWith(() => json({ error: 'forbidden', message: '비활성화된 계정입니다.' }, 403))
     const router = renderAt('/signup')
 
     await fill()
 
-    expect((await screen.findByRole('alert')).textContent).toBe('비활성화된 계정입니다.')
+    expect(await screen.findByText('비활성화된 계정입니다.')).toBeTruthy()
     expect(router.state.location.pathname).toBe('/signup')
-    expect(screen.getByRole('button', { name: '가입' })).toBeTruthy()
+    expect(await screen.findByRole('button', { name: '가입' })).toBeTruthy()
   })
 
   it('다른 곳에서 이미 가입했으면 거부되어도 둘러보기로 보낸다', async () => {

@@ -72,8 +72,6 @@ export function SignupPage() {
   const [consent, setConsent] = useState(false)
   const [errors, setErrors] = useState<FieldErrors>({})
   const [saving, setSaving] = useState(false)
-  // 입력란에 붙일 수 없는 가입 실패 사유. 폼 안에 표시한다.
-  const [formError, setFormError] = useState<string | null>(null)
 
   function clearError(field: Field) {
     setErrors((current) => ({ ...current, [field]: undefined }))
@@ -89,7 +87,6 @@ export function SignupPage() {
     }
     const found = validate(input)
     setErrors(found)
-    setFormError(null)
     if (Object.keys(found).length > 0) return
 
     setSaving(true)
@@ -102,10 +99,10 @@ export function SignupPage() {
         setErrors(fieldErrors)
         return
       }
-      // 이미 가입했으면 현재 사용자를 다시 읽어 맞는 화면으로 보낸다.
-      // 다시 읽어도 이 화면에 남으면(비활성화된 계정 등) 사유를 폼 안에 보여 준다.
+      // 사유를 알린 뒤 현재 사용자를 다시 읽어 맞는 화면으로 보낸다. 이미 가입했으면 둘러보기로 간다.
+      // 다시 읽는 동안 이 화면이 새로 그려지므로 사유는 화면 밖 알림으로 띄운다.
       if (error instanceof ApiError && error.status === 403) {
-        setFormError(error.message && error.message !== error.code ? error.message : MESSAGES.forbidden)
+        notifyError(error.message && error.message !== error.code ? error.message : MESSAGES.forbidden)
         await reload()
         return
       }
@@ -135,7 +132,6 @@ export function SignupPage() {
             <TextInput
               label="학번"
               placeholder="20261234"
-              maxLength={8}
               required
               inputMode="numeric"
               autoComplete="off"
@@ -176,12 +172,6 @@ export function SignupPage() {
               }}
               error={errors.consent}
             />
-
-            {formError && (
-              <Text role="alert" size="sm" c="danger.7">
-                {formError}
-              </Text>
-            )}
 
             <Group justify="flex-end">
               <Button type="submit" loading={saving}>
