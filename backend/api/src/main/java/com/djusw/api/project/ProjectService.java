@@ -177,7 +177,7 @@ class ProjectService {
                 || length(request.name()) > 100 || length(request.team_name()) > 50
                 || length(request.description()) > 500
                 || (request.starts_on() != null && request.ends_on() != null
-                    && !request.ends_on().isAfter(request.starts_on()))
+                    && request.ends_on().isBefore(request.starts_on()))
                 || (request.visibility() != null && !List.of("TEAM", "STUDENTS").contains(request.visibility()))) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "invalid_request", "프로젝트 정보를 확인하세요.");
         }

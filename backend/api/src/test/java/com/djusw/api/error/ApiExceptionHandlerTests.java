@@ -13,6 +13,8 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -55,6 +57,16 @@ class ApiExceptionHandlerTests {
     }
 
     @Test
+    void invalidPathAndQueryTypesReturnBadRequest(CapturedOutput output) throws Exception {
+        for (String url : new String[]{"/test/types/abc", "/test/types/1?page=abc",
+                "/test/types/1?size=x", "/test/types/1?include_archived=maybe"}) {
+            mvc.perform(get(url)).andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.error").value("invalid_request"));
+        }
+        org.junit.jupiter.api.Assertions.assertFalse(output.getAll().contains("처리하지 못한 예외"));
+    }
+
+    @Test
     void unexpectedErrorsDoNotExposeExceptionDetails() throws Exception {
         mvc.perform(get("/test/failure"))
                 .andExpect(status().isInternalServerError())
@@ -72,6 +84,11 @@ class ApiExceptionHandlerTests {
 
     @RestController
     static class TestController {
+        @GetMapping("/test/types/{id}")
+        void types(@PathVariable("id") long id, @RequestParam(defaultValue = "1") int page,
+                   @RequestParam(defaultValue = "50") int size,
+                   @RequestParam(name = "include_archived", defaultValue = "false") boolean includeArchived) {}
+
         @GetMapping("/test/unauthorized")
         void unauthorized() {
             throw new ApiException(HttpStatus.UNAUTHORIZED, "unauthorized", "로그인이 필요합니다.");

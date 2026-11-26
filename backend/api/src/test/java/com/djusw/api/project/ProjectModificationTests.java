@@ -69,7 +69,7 @@ class ProjectModificationTests {
                 "{\"name\":\"" + "a".repeat(101) + "\"}",
                 "{\"team_name\":\"" + "a".repeat(51) + "\"}",
                 "{\"description\":\"" + "a".repeat(501) + "\"}",
-                "{\"starts_on\":\"2026-02-01\"}", "{\"ends_on\":\"2025-12-31\"}",
+                "{\"starts_on\":\"2026-02-02\"}", "{\"ends_on\":\"2025-12-31\"}",
                 "{\"ends_on\":\"invalid\"}", "{\"visibility\":null}", "{\"visibility\":\"bad\"}",
                 "{\"name\":123}", "{\"status\":\"DONE\"}")) {
             patch(leader, CurrentUser.Role.STUDENT, body).andExpect(status().isBadRequest())
@@ -78,6 +78,15 @@ class ProjectModificationTests {
         assertEquals("edit test", jdbc.queryForObject("SELECT name FROM capstone.projects WHERE id = ?", String.class, project));
         patch(leader, CurrentUser.Role.STUDENT, "{\"starts_on\":\"2026-04-01\",\"ends_on\":\"2026-04-02\"}")
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    void sameDayProjectCanBeUpdatedAndArchived() throws Exception {
+        jdbc.update("UPDATE capstone.projects SET ends_on = starts_on WHERE id = ?", project);
+        patch(leader, CurrentUser.Role.STUDENT, "{\"team_name\":\"updated\"}")
+                .andExpect(status().isOk()).andExpect(jsonPath("$.team_name").value("updated"));
+        archive(leader, CurrentUser.Role.STUDENT).andExpect(status().isNoContent());
+        assertEquals(1, jdbc.queryForObject("SELECT count(*) FROM capstone.projects WHERE id = ? AND archived_at IS NOT NULL", Integer.class, project));
     }
 
     @Test

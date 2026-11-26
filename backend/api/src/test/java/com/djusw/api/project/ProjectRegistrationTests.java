@@ -67,6 +67,8 @@ class ProjectRegistrationTests {
     @Test
     void acceptsBoundaryLengthsOptionalFieldsAndPublicVisibility() throws Exception {
         create(CurrentUser.Role.STUDENT, "{\"name\":\"가\"}").andExpect(status().isCreated());
+        create(CurrentUser.Role.STUDENT, "{\"name\":\"same day\",\"starts_on\":\"2026-01-01\",\"ends_on\":\"2026-01-01\"}")
+                .andExpect(status().isCreated());
         String body = "{\"name\":\"" + "가".repeat(100) + "\",\"team_name\":\"" + "a".repeat(50)
                 + "\",\"description\":\"" + "b".repeat(500) + "\",\"starts_on\":\"2026-01-01\","
                 + "\"ends_on\":\"2026-01-02\",\"visibility\":\"STUDENTS\"}";
@@ -81,7 +83,6 @@ class ProjectRegistrationTests {
         for (String body : List.of("{}", "{\"name\":\" \"}", "{\"name\":\"" + "a".repeat(101) + "\"}",
                 "{\"name\":\"ok\",\"team_name\":\"" + "a".repeat(51) + "\"}",
                 "{\"name\":\"ok\",\"description\":\"" + "a".repeat(501) + "\"}",
-                "{\"name\":\"ok\",\"starts_on\":\"2026-01-01\",\"ends_on\":\"2026-01-01\"}",
                 "{\"name\":\"ok\",\"starts_on\":\"2026-01-02\",\"ends_on\":\"2026-01-01\"}",
                 "{\"name\":\"ok\",\"starts_on\":\"invalid\"}",
                 "{\"name\":\"ok\",\"visibility\":\"PUBLIC\"}")) {
