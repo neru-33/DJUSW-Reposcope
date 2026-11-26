@@ -41,7 +41,7 @@ class EventProcessor:
         elif message.event == 'installation_repositories':
             if action not in ('added', 'removed'):
                 return 'IGNORED'
-        elif message.event in ('push', 'pull_request', 'issues'):
+        elif message.event in ('push', 'pull_request', 'pull_request_review', 'issues'):
             return activities.apply(conn, message.event, payload)
         else:
             return 'IGNORED'

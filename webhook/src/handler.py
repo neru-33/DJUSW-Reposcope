@@ -15,8 +15,9 @@ from datetime import datetime, timezone
 
 SCHEMA_VERSION = 1
 # 큐로 넘기는 이벤트. worker가 처리하는 이벤트와 같아야 한다. 그 밖의 이벤트(ping 등)는 서명만 확인하고 저장하지 않는다.
-# pull_request_review는 worker가 처리하게 되면 추가한다(T-23).
-QUEUED_EVENTS = frozenset({"installation", "installation_repositories", "push", "pull_request", "issues"})
+QUEUED_EVENTS = frozenset(
+    {"installation", "installation_repositories", "push", "pull_request", "pull_request_review", "issues"}
+)
 SECRET_TTL_SECONDS = 300
 PLACEHOLDER_SECRET = b"CHANGE_ME"
 MIN_SECRET_LENGTH = 32

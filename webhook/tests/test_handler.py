@@ -14,7 +14,7 @@ import handler  # noqa: E402
 SECRET = "a" * 64
 BODY = json.dumps({"action": "created", "installation": {"id": 1}}).encode()
 DELIVERY = "72d3162e-cc78-11e3-81ab-4c9367dc0958"
-WORKER_EVENTS = {"installation", "installation_repositories", "push", "pull_request", "issues"}
+WORKER_EVENTS = {"installation", "installation_repositories", "push", "pull_request", "pull_request_review", "issues"}
 
 
 class FakeSSM:
@@ -109,10 +109,11 @@ class HandlerTest(unittest.TestCase):
                 self.assertEqual(resp["statusCode"], 202)
         self.assertEqual({json.loads(m["MessageBody"])["event"] for m in self.sqs.sent}, WORKER_EVENTS)
 
-    def test_pull_request_review_is_not_queued_yet(self):
+    def test_pull_request_review_is_queued(self):
         resp = handler.handler(make_event(event="pull_request_review"), None)
-        self.assertEqual(resp["statusCode"], 200)
-        self.assert_nothing_stored()
+        self.assertEqual(resp["statusCode"], 202)
+        self.assertEqual(len(self.s3.puts), 1)
+        self.assertEqual(json.loads(self.sqs.sent[0]["MessageBody"])["event"], "pull_request_review")
 
     def test_base64_body_is_verified_on_raw_bytes(self):
         resp = handler.handler(make_event(b64=True), None)
