@@ -6,6 +6,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.beans.TypeMismatchException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -23,6 +24,12 @@ public class ApiExceptionHandler {
     ResponseEntity<ApiErrorResponse> handleInvalidBody(HttpMessageNotReadableException exception) {
         return ResponseEntity.badRequest().contentType(MediaType.APPLICATION_JSON)
                 .body(new ApiErrorResponse("invalid_request", "요청 본문을 확인하세요."));
+    }
+
+    @ExceptionHandler(TypeMismatchException.class)
+    ResponseEntity<ApiErrorResponse> handleTypeMismatch(TypeMismatchException exception) {
+        return ResponseEntity.badRequest().contentType(MediaType.APPLICATION_JSON)
+                .body(new ApiErrorResponse("invalid_request", "요청 값을 확인하세요."));
     }
 
     @ExceptionHandler(Exception.class)
