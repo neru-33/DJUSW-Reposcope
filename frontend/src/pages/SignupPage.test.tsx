@@ -94,7 +94,7 @@ describe('V-2 가입', () => {
         '프로젝트를 학생 모두에게 공개하면 이름, GitHub 로그인 이름, 프로필 사진, 활동 기록이 다른 팀 학생에게도 보입니다.',
       ),
     ).toBeTruthy()
-    expect(screen.getByText('서비스 운영 종료 시까지')).toBeTruthy()
+    expect(screen.getByText('서비스 운영 종료일(2026년 12월 31일)까지. 종료 후 지체 없이 파기합니다.')).toBeTruthy()
   })
 
   it('학번은 8자리 숫자만 받는다', async () => {
