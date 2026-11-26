@@ -14,6 +14,12 @@ from .log import emit
 API_ROOT = 'https://api.github.com'
 
 
+def _etag(response):
+    headers = getattr(response, 'headers', None)
+    value = headers.get('ETag') if headers is not None else None
+    return value if isinstance(value, str) and value else None
+
+
 class GitHubError(RuntimeError):
     """status: HTTP 상태 코드(없으면 네트워크 오류). 응답 본문은 담지 않는다."""
     def __init__(self, message='GitHub request failed', status=None):
@@ -43,22 +49,35 @@ class GitHubApp:
             return None
         return cls(app_id, pem)
 
-    def _request(self, method, path, token):
+    def _send(self, method, path, token, etag=None):
+        """(상태 코드, ETag, 본문). etag를 주면 조건부 요청을 보내고 304는 본문 없이 돌려준다."""
+        headers = {'Accept': 'application/vnd.github+json',
+                   'Authorization': 'Bearer ' + token,
+                   'X-GitHub-Api-Version': '2026-03-10',
+                   'User-Agent': 'reposcope-worker',
+                   'Content-Type': 'application/json'}
+        if etag:
+            headers['If-None-Match'] = etag
         request = Request(API_ROOT + path, method=method,
-                          data=b'{}' if method == 'POST' else None,
-                          headers={'Accept': 'application/vnd.github+json',
-                                   'Authorization': 'Bearer ' + token,
-                                   'X-GitHub-Api-Version': '2026-03-10',
-                                   'User-Agent': 'reposcope-worker',
-                                   'Content-Type': 'application/json'})
+                          data=b'{}' if method == 'POST' else None, headers=headers)
         try:
             with self.opener(request, timeout=10) as response:
-                return json.load(response)
+                return 200, _etag(response), json.load(response)
         except HTTPError as error:
+            if etag and error.code == 304:
+                error.close()
+                return 304, _etag(error) or etag, None
             # Response bodies and headers may contain tokens/private repo details. Keep the status only.
             raise GitHubError('GitHub request failed', status=error.code) from None
         except (URLError, OSError, http.client.HTTPException, ValueError):
             raise GitHubError('GitHub request failed') from None
+
+    def _request(self, method, path, token):
+        return self._send(method, path, token)[2]
+
+    def conditional_get(self, path, token, etag=None):
+        """ETag 조건부 GET. (200, 새 ETag, 본문) 또는 (304, ETag, None)."""
+        return self._send('GET', path, token, etag)
 
     def installation_token(self, installation_id):
         cached = self._tokens.get(installation_id)

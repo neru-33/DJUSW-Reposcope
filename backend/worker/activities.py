@@ -93,6 +93,17 @@ def review_row(review, pull_request):
             str(pull_request['number']), None)
 
 
+def rest_review_row(review, number):
+    """REST /repos/{repo}/pulls/{number}/reviews 목록의 리뷰 하나 (backfill). 본문은 쓰지 않는다.
+    제출 전(pending)이거나 제출 시각이 없는 리뷰는 저장하지 않는다."""
+    if not isinstance(review, dict) or type(review.get('id')) is not int or not review.get('submitted_at'):
+        return None
+    try:
+        return review_row(review, {'number': number})
+    except (KeyError, TypeError, ValueError):
+        return None
+
+
 def apply(conn, event, payload):
     rid = repo_id(payload)
     if rid is None:
