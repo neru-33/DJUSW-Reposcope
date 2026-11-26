@@ -5,6 +5,8 @@ import { config } from './config'
 import { AppLayout } from './layout/AppLayout'
 import { Root } from './layout/Root'
 import { ErrorPage } from './pages/ErrorPage'
+import { OperatorLoginPage } from './pages/OperatorLoginPage'
+import { OperatorSetupPage } from './pages/OperatorSetupPage'
 import { ScreenPage } from './pages/ScreenPage'
 import { SignupPage } from './pages/SignupPage'
 import { StartPage } from './pages/StartPage'
@@ -14,6 +16,8 @@ import { screens } from './screens'
 const pages: Partial<Record<string, ComponentType>> = {
   'V-1': StartPage,
   'V-2': SignupPage,
+  'V-13': OperatorLoginPage,
+  'V-14': OperatorSetupPage,
 }
 
 const screenRoutes: RouteObject[] = screens.map((screen) => {

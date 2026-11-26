@@ -23,6 +23,10 @@ describe('homePath', () => {
     expect(homePath(me('PROFESSOR'))).toBe('/admin/projects')
     expect(homePath(me('SUPER_ADMIN'))).toBe('/admin/projects')
   })
+
+  it('운영자는 개인정보 동의 값과 관계없이 가입 화면으로 보내지 않는다', () => {
+    expect(homePath(me('SUPER_ADMIN', { consent_required: true }))).toBe('/admin/projects')
+  })
 })
 
 describe('checkAccess', () => {

@@ -3,8 +3,8 @@ import type { ApiErrorBody, Me } from './types'
 
 const CSRF_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])
 const ME_PATH = '/api/me'
-/** 401을 받아도 세션 만료로 보지 않는 요청. 로그인 상태 확인과 로그아웃이다. */
-const SESSION_CHECK_EXEMPT = new Set([ME_PATH, '/auth/logout'])
+/** 401을 받아도 세션 만료로 보지 않는 요청. 로그인 상태 확인(운영자 설정 단계 포함)과 로그아웃이다. */
+const SESSION_CHECK_EXEMPT = new Set([ME_PATH, '/auth/admin/state', '/auth/logout'])
 
 let csrfToken: string | null = null
 
