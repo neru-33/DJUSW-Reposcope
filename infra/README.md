@@ -97,6 +97,10 @@ aws freetier get-account-plan-state --region us-east-1
 5. `terraform plan`으로 결과를 확인한 뒤 `terraform apply`를 실행한다.
 6. 비밀값을 Parameter Store에 넣는다. Terraform은 값을 읽지도 바꾸지도 않는다.
 
+   `operator-otp-key`에는 세션과 별도로 생성한 32바이트 임의 키의 Base64 값을 넣는다. 이 키는 API 인스턴스와 재배포 간에 유지하며, 변경하거나 잃으면 기존 OTP 비밀키를 복호화할 수 없다. 비밀값이 셸 기록이나 로그에 남지 않도록 안전하게 입력한다.
+
+   `openssl rand -base64 32`로 키를 생성할 수 있다. 출력은 비밀값이므로 안전한 환경에서 생성해 Parameter Store에 입력하고 터미널 기록이나 로그에 남기지 않는다. 설정된 키가 올바른 Base64가 아니거나 디코딩 결과가 32바이트가 아니면 API는 시작하지 않는다.
+
    ```bash
    aws ssm put-parameter --name /reposcope/<이름> --type SecureString --overwrite --value "<값>"
    ```
@@ -234,7 +238,7 @@ EC2 역할에는 GitHub App 키를 읽는 권한이 있다. 인스턴스 메타�
 | api | `API_IMAGE`로 받은 이미지. 8080은 호스트에 열지 않고 `expose`만 한다 |
 | cloudflared | Cloudflare로 먼저 연결해 터널을 만든다. 요청은 `http://api:8080`으로 넘긴다. 자동으로 다시 시작한다 |
 | api 환경 변수 | `SESSION_COOKIE_SECURE=true`, `CORS_ALLOWED_ORIGIN`과 `FRONTEND_URL`은 `https://www.eclipse-sync.com`. `GITHUB_CLIENT_ID`와 `GITHUB_CALLBACK_URL`은 GitHub App 사용자 인증에 쓴다 |
-| 비밀값 | `DB_PASSWORD`, `TUNNEL_TOKEN`, `GITHUB_CLIENT_SECRET`은 파일에 쓰지 않는다. 배포 스크립트가 Parameter Store에서 읽어 환경 변수로 넘긴다. GitHub App 키(`github-app-key`)는 `/etc/<name_prefix>/secrets/github-app-key`(root 소유, worker만 읽는 권한)에 파일로 두고 worker에 읽기 전용으로 붙인다 |
+| 비밀값 | `DB_PASSWORD`, `TUNNEL_TOKEN`, `GITHUB_CLIENT_SECRET`, `OPERATOR_OTP_KEY`는 파일에 쓰지 않는다. 배포 스크립트가 Parameter Store에서 읽어 환경 변수로 넘긴다. GitHub App 키(`github-app-key`)는 `/etc/<name_prefix>/secrets/github-app-key`(root 소유, worker만 읽는 권한)에 파일로 두고 worker에 읽기 전용으로 붙인다 |
 | 터널 토큰 | Terraform이 만들지 않는다. 운영자가 Cloudflare 대시보드에서 복사해 Parameter Store(SecureString)에 넣는다 |
 
 **IMDS 차단**: api와 `cloudflared`는 고정 대역(`172.28.0.0/24`)의 `edge` 네트워크만 쓴다. EC2의 user_data가 설치하는 systemd 단위(`<name_prefix>-block-imds.service`)가 부팅할 때마다 `docker.service`보다 먼저 이 대역에서 `169.254.169.254`로 가는 요청을 막는 규칙을 DOCKER-USER 체인에 넣는다. 재부팅이나 중지 후 시작에도 컨테이너가 뜨기 전에 규칙이 적용되므로 따로 실행할 것이 없다. 규칙을 넣지 못하면 Docker도 시작하지 않으므로, 컨테이너가 모두 멈춰 있으면 `systemctl status <name_prefix>-block-imds.service`부터 확인한다. worker는 EC2 역할이 필요하므로 이 네트워크에 넣지 않는다.
@@ -259,7 +263,7 @@ sudo DB_HOST=<RDS 주소> GITHUB_APP_ID=<앱 ID> GITHUB_CLIENT_ID=<Client ID> ./
 순서는 다음과 같고, 한 단계라도 실패하면 멈추고 종료 코드 1을 돌려준다(Actions가 이 결과를 기다린다).
 
 1. `<name_prefix>-block-imds.service`가 `active`이고 DOCKER-USER에 차단 규칙이 있는지 확인한다. 없으면 컨테이너를 띄우지 않는다.
-2. Parameter Store에서 `db-password`, `tunnel-token`, `github-app-key`, `github-client-secret`을 읽는다. 값이 비었거나 초기값 `CHANGE_ME`이면 멈춘다. 값은 화면에 출력하지 않고 명령 인자로도 넘기지 않는다.
+2. Parameter Store에서 `db-password`, `tunnel-token`, `github-app-key`, `github-client-secret`, `operator-otp-key`를 읽는다. 값이 비었거나 초기값 `CHANGE_ME`이면 멈춘다. 값은 화면에 출력하지 않고 명령 인자로도 넘기지 않는다.
 3. ECR에 로그인해 이미지를 받는다. 로그인 정보는 임시 폴더에 두고 끝나면 지운다.
 4. worker를 다시 만들어 시작하고, 마이그레이션이 끝나 로그에 `worker_started`가 나올 때까지 기다린다(기본 180초).
 5. api와 `cloudflared`를 시작하고 api의 `Started` 로그를 기다린다. 터널 연결(`Registered tunnel connection`)이 60초 안에 확인되지 않으면 경고만 남긴다. 공개 주소 확인은 호출한 쪽에서 `https://api.eclipse-sync.com/api/version`으로 한다.
@@ -270,6 +274,30 @@ sudo DB_HOST=<RDS 주소> GITHUB_APP_ID=<앱 ID> GITHUB_CLIENT_ID=<Client ID> ./
 이 스크립트를 처음 쓸 때는 EC2에 `compose.yml`과 `deploy.sh`를 같은 폴더에 두고 위 명령으로 한 번 실행한다. 배포 워크플로는 이 두 파일을 명령에 담아 EC2에 올리고 실행한다.
 
 EC2가 재부팅되면 `restart: unless-stopped`로 컨테이너가 다시 뜬다. 이때 worker와 api는 동시에 시작하므로, 마이그레이션이 필요한 새 버전은 재부팅이 아니라 `deploy.sh`로 배포한다.
+
+#### 최초 최고관리자 생성
+
+자동 배포는 초기 관리자 ID와 비밀번호를 전달하지 않는다. 최초 한 번만 신뢰할 수 있는 대화형 EC2 root 셸에서 아래 절차를 실행한다. 수집·계정 마이그레이션과 API 마이그레이션을 적용하고 `operator-otp-key`를 설정해야 한다. 동시에 자동 배포가 실행되지 않도록 한다. 명령이나 로그에 비밀값을 직접 적지 않는다.
+
+1. `compose.yml`과 `deploy.sh`가 있는 폴더에서 root 셸을 열고, 위 배포 명령에 필요한 `DB_HOST`, `GITHUB_CLIENT_ID`와 사용하는 선택 설정을 `export`로 환경 변수에 지정한다. 배포할 이미지 태그는 이미 배포된 태그를 쓴다.
+2. 셸에서 다음 명령으로 초기 ID와 임시 비밀번호를 입력하고 내보낸다. 입력은 화면에 표시되지 않는다.
+
+   ```bash
+   read -r -s -p '초기 관리자 ID: ' OPERATOR_BOOTSTRAP_USERNAME; echo
+   read -r -s -p '초기 관리자 비밀번호: ' OPERATOR_BOOTSTRAP_PASSWORD; echo
+   export OPERATOR_BOOTSTRAP_USERNAME OPERATOR_BOOTSTRAP_PASSWORD
+   ./deploy.sh <이미지 태그>
+   ```
+
+3. 배포가 실패한 경우에도 즉시 다음 명령으로 셸에서 초기값을 지운다. API 컨테이너가 생성됐다면 컨테이너 환경에도 초기값이 남지 않도록 초기값 없이 다시 배포하고 완료를 확인한다. 실패 원인을 확인할 때 비밀값을 출력하지 않는다.
+
+   ```bash
+   unset OPERATOR_BOOTSTRAP_USERNAME OPERATOR_BOOTSTRAP_PASSWORD
+   ./deploy.sh <이미지 태그>
+   exit
+   ```
+
+4. 최초 관리자 ID와 임시 비밀번호로 로그인해 72시간 안에 ID·비밀번호를 바꾸고 OTP를 등록한다. API 요청 형식은 `docs/api-spec.md` 4장을 따른다. 초기화 기록은 계정 삭제 후에도 남으며 초기 설정값을 다시 지정해도 계정은 재생성되지 않는다.
 
 **apply 후 확인**:
 

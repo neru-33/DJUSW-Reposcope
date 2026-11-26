@@ -19,7 +19,7 @@ public class CurrentUserService {
         return currentUser().isPresent();
     }
 
-    private Optional<CurrentUser> currentUser() {
+    Optional<CurrentUser> currentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()
                 || !(authentication.getPrincipal() instanceof CurrentUser user)) {

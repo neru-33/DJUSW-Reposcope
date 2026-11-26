@@ -23,13 +23,16 @@ public class CurrentUserController {
     private final GithubUserRepository users;
     private final CsrfTokenService csrf;
     private final boolean secureCookie;
+    private final OperatorSessionService operatorSessions;
 
     CurrentUserController(CurrentUserService currentUsers, GithubUserRepository users, CsrfTokenService csrf,
-                          @Value("${server.servlet.session.cookie.secure:false}") boolean secureCookie) {
+                          @Value("${server.servlet.session.cookie.secure:false}") boolean secureCookie,
+                          OperatorSessionService operatorSessions) {
         this.currentUsers = currentUsers;
         this.users = users;
         this.csrf = csrf;
         this.secureCookie = secureCookie;
+        this.operatorSessions = operatorSessions;
     }
 
     @GetMapping("/api/me")
@@ -47,7 +50,11 @@ public class CurrentUserController {
     public void logout(HttpServletRequest request, HttpServletResponse response) {
         currentUsers.requireCurrentUser();
         var session = request.getSession(false);
-        if (session != null) session.invalidate();
+        if (session != null) {
+            if (session.getAttribute(OperatorLoginController.PENDING) instanceof OperatorLoginController.Pending)
+                operatorSessions.remove(session.getId());
+            session.invalidate();
+        }
         SecurityContextHolder.clearContext();
         String path = request.getContextPath().isEmpty() ? "/" : request.getContextPath();
         response.addHeader(HttpHeaders.SET_COOKIE, ResponseCookie.from("JSESSIONID", "")

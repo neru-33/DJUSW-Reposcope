@@ -10,6 +10,10 @@ Java 21과 PostgreSQL을 사용한다. 환경 변수를 설정한 뒤 `./gradlew
 
 `CORS_ALLOWED_ORIGIN`은 자격 증명을 허용할 화면 출처 하나이며 기본값은 `http://localhost:5173`이다. 운영 환경에서는 `https://www.eclipse-sync.com`으로 설정한다. `FRONTEND_URL`은 로그인 후 이동할 화면 주소로, 기본값은 `http://localhost:5173`이며 운영 환경에서는 `https://www.eclipse-sync.com`으로 설정한다.
 
+운영자 OTP 등록에는 `OPERATOR_OTP_KEY`가 필요하다. 세션과 독립적으로 안전하게 생성한 32바이트 키를 표준 Base64로 인코딩해 환경 변수로 전달한다. OTP 비밀키는 이 키로 AES-GCM 암호화해 저장한다. 서버 재시작과 인스턴스 간에 동일한 키를 유지해야 하며, 키를 바꾸거나 잃으면 기존 OTP 비밀키를 복호화할 수 없다. 키를 코드, 로그, 저장소에 넣지 않는다.
+
+첫 `SUPER_ADMIN`을 만들 때만 `OPERATOR_BOOTSTRAP_USERNAME`과 `OPERATOR_BOOTSTRAP_PASSWORD`를 API 실행 환경에 함께 설정한다. 계정 마이그레이션과 API 마이그레이션이 적용된 뒤 API를 시작하면 한 번만 생성된다. 초기 비밀번호는 72시간 동안만 유효하며, 첫 로그인에서 ID와 비밀번호를 바꾸고 OTP를 등록해야 한다. 생성 후 두 초기 설정값을 실행 환경에서 제거하고 API를 재시작한다. 값은 코드나 저장소에 넣지 않는다. 두 값 중 하나만 지정하면 API가 시작되지 않는다.
+
 GitHub 사용자 인증에는 `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `GITHUB_CALLBACK_URL` 환경 변수를 사용한다. 콜백 URL은 GitHub App에 등록된 주소와 같아야 하며 로컬 기본값은 `http://localhost:8080/auth/github/callback`이다. 사용자 토큰은 인증 중 사용자 정보와 GitHub App 설치 저장소 조회에만 사용한다. 설치 및 저장소 목록을 모두 조회한 후 접근 가능 목록을 갱신한다. 조회가 실패하면 로그인도 실패하고 기존 목록은 유지된다. 계정 테이블의 스키마는 `INGEST_SCHEMA`로 지정하며 기본값은 `public`이다. 로컬 compose의 API에 값을 전달하려면 `.env`에 설정한다. Client secret은 저장소에 올리지 않는다.
 
 사용자 IP는 신뢰할 수 있는 프록시가 전달한 `CF-Connecting-IP`에서 읽는다. 운영 API는 Cloudflare Tunnel을 거치지 않은 외부 요청을 받지 않아야 한다.
@@ -29,13 +33,13 @@ PostgreSQL 연결을 위해 다음 환경 변수를 실행 환경에 설정한�
 
 ## 공통 인증과 권한
 
-Spring Security는 `/api/health`, `/api/version`, GitHub 로그인 시작·콜백, 운영자 로그인 요청을 공개하고 나머지 요청에는 인증을 요구한다. 학생 로그인은 GitHub 인증 결과를 세션에 연결한다. 운영자 로그인(T-24)은 아래 계약에 맞춰 인증을 연결한다.
+Spring Security는 `/api/health`, `/api/version`, GitHub 로그인 시작·콜백과 운영자 인증 경로를 공개한다. 운영자 인증 경로는 각 요청에서 설정 단계와 세션을 확인한다. 나머지 요청에는 인증이 필요하다.
 
 ### 로그인과 세션 연결
 
 - 인증에 성공한 사용자는 `CurrentUser`의 사용자 ID와 서비스 역할로 표현한다. `CurrentUserService`는 Spring Security의 `SecurityContext`에서 `CurrentUser` 타입의 principal을 읽는다. 다른 타입을 저장하면 현재 사용자로 인정하지 않는다.
 - 로그인 구현은 검증이 끝난 인증 정보로 `Authentication`을 만들고, 현재 요청의 `SecurityContext`를 세션에 저장해 다음 요청에서도 읽을 수 있게 해야 한다. `SecurityContextHolder`에만 설정하는 것은 세션 저장을 보장하지 않는다. 세션 고정 보호와 로그아웃 시 세션 종료도 로그인 작업에서 구현·검증한다.
-- 운영자의 `PASSWORD_CHANGE`, `OTP_SETUP`, `OTP` 단계는 완전한 로그인과 구분해야 한다. 현재 `CurrentUser`에는 설정 단계 정보가 없으므로, 운영자 로그인 작업에서 단계별 인증 상태와 허용 경로를 추가해야 한다. OTP 확인 전에는 일반 API나 운영자 권한을 부여하지 않는다.
+- 운영자의 `PASSWORD_CHANGE`, `OTP_SETUP`, `OTP` 단계에서는 단계에 필요한 인증 경로만 사용한다. OTP 확인 후 `ACTIVE`가 되면 `CurrentUser`를 세션에 저장한다. 운영자 세션은 미사용 30분 또는 최초 로그인 8시간 뒤 만료되며, 역할이 변경되면 기존 세션을 무효화한다.
 - 가입 완료 또는 사용자 역할 변경 시 세션의 `CurrentUser`를 갱신하고, 계정 비활성화나 권한 변경 시 기존 세션에 미치는 영향을 처리한다. 기존 principal은 사용자 ID와 역할의 스냅샷이다.
 
 ### API에서 현재 사용자와 권한 확인

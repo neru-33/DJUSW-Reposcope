@@ -133,6 +133,9 @@
 ```
 
 `/auth/admin/login`은 다음 단계를 돌려준다. ID가 없거나 비밀번호가 틀려도 같은 `401 invalid_credentials`로 응답한다.
+같은 IP의 실패 기록이 최근 15분 동안 20회에 도달하면 그 이후의 로그인과 OTP 확인 시도는 `429 too_many_attempts`로 거부한다. 20번째 실패 자체는 인증 실패로 응답하고, 21번째 시도부터 차단한다.
+`must_change_password`가 참인 계정의 임시 비밀번호는 `temp_password_expires_at`부터 사용할 수 없으며 `401 temp_password_expired`로 응답한다. 임시 비밀번호 발급 시 이 값은 발급 시각으로부터 72시간 뒤로 정한다. 계정 자체의 `expires_at`은 별도 사용 기한이며, 이 기한이 지난 계정은 `401 invalid_credentials`로 응답한다.
+`GET /auth/admin/state`도 같은 형식으로 현재 단계와 해당 세션의 CSRF 토큰을 돌려준다.
 
 ```json
 { "stage": "OTP", "csrf_token": "토큰" }
@@ -144,6 +147,8 @@
 | `POST /auth/admin/otp/setup`, `POST /auth/admin/otp` | `{ "code": "123456" }` |
 
 `new_username`은 임시 계정의 첫 변경에서 받는다. `GET /auth/admin/otp/setup`은 `{ "secret": "", "otpauth_uri": "" }`를 돌려준다.
+`POST /auth/admin/password`는 변경 후 `{ "stage": "", "csrf_token": "" }`을 돌려주며, 현재 세션 외의 운영자 세션을 종료한다.
+`POST /auth/admin/otp/setup`과 `POST /auth/admin/otp`는 확인에 성공하면 `{ "stage": "ACTIVE", "csrf_token": "" }`을 돌려준다.
 
 ## 5. 프로젝트 (R-3, R-5)
 

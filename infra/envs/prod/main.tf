@@ -69,6 +69,7 @@ module "app" {
   secret_param_arns = [
     module.secrets.arns["github-app-key"],
     module.secrets.arns["github-client-secret"],
+    module.secrets.arns["operator-otp-key"],
     module.secrets.arns["db-password"],
     module.secrets.arns["tunnel-token"],
   ]

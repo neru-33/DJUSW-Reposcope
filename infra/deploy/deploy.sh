@@ -6,7 +6,7 @@
 #
 # 하는 일(순서대로)
 #   1. IMDS 차단 서비스와 DOCKER-USER 규칙이 있는지 확인한다. 없으면 멈춘다.
-#   2. Parameter Store에서 비밀값(db-password, tunnel-token, github-app-key, github-client-secret)을 읽는다. 초기값 CHANGE_ME이면 멈춘다.
+#   2. Parameter Store에서 비밀값(db-password, tunnel-token, github-app-key, github-client-secret, operator-otp-key)을 읽는다. 초기값 CHANGE_ME이면 멈춘다.
 #   3. ECR에 로그인해 이미지를 받는다(로그인 정보는 임시 폴더에 두고 끝나면 지운다).
 #   4. worker를 먼저 시작하고, 마이그레이션이 끝나 worker_started가 로그에 나올 때까지 기다린다.
 #   5. api와 cloudflared를 시작하고 api가 올라올 때까지 기다린다.
@@ -88,6 +88,7 @@ DB_PASSWORD="$(get_param db-password)"
 TUNNEL_TOKEN="$(get_param tunnel-token)"
 app_key="$(get_param github-app-key)"
 GITHUB_CLIENT_SECRET="$(get_param github-client-secret)"
+OPERATOR_OTP_KEY="$(get_param operator-otp-key)"
 log "Parameter Store 값 확인(값은 출력하지 않는다)"
 
 # worker 컨테이너(uid 65532)만 읽을 수 있게 둔다. 재부팅해도 컨테이너가 다시 뜰 수 있도록 디스크에 둔다.
@@ -113,7 +114,7 @@ APP_VERSION="$IMAGE_TAG"
 
 export API_IMAGE WORKER_IMAGE APP_VERSION \
   DB_HOST DB_NAME DB_USER DB_PASSWORD QUEUE_URL RAW_BUCKET GITHUB_APP_ID GITHUB_APP_KEY_FILE TUNNEL_TOKEN \
-  GITHUB_CLIENT_ID GITHUB_CLIENT_SECRET
+  GITHUB_CLIENT_ID GITHUB_CLIENT_SECRET OPERATOR_OTP_KEY
 
 compose config -q
 log "이미지 받기: ${NAME_PREFIX}-api, ${NAME_PREFIX}-worker, cloudflared (태그 ${IMAGE_TAG})"

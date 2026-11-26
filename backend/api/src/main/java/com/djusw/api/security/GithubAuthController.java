@@ -28,14 +28,16 @@ public class GithubAuthController {
     private final SecureRandom random = new SecureRandom();
     private final GithubIdentityClient github;
     private final GithubUserRepository users;
+    private final OperatorSessionService operatorSessions;
     private final String clientId, callbackUrl, frontendUrl;
 
-    GithubAuthController(GithubIdentityClient github, GithubUserRepository users,
+    GithubAuthController(GithubIdentityClient github, GithubUserRepository users, OperatorSessionService operatorSessions,
                          @Value("${app.github.client-id}") String clientId,
                          @Value("${app.github.callback-url}") String callbackUrl,
                          @Value("${app.frontend-url}") String frontendUrl) {
         this.github = github;
         this.users = users;
+        this.operatorSessions = operatorSessions;
         this.clientId = clientId;
         this.callbackUrl = callbackUrl;
         this.frontendUrl = frontendUrl.replaceAll("/+$", "");
@@ -69,6 +71,10 @@ public class GithubAuthController {
             throw new ApiException(HttpStatus.BAD_REQUEST, "invalid_request", "GitHub 인증 요청을 확인하세요.");
         }
         CurrentUser user = users.saveLogin(github.authenticate(code, pending.verifier()));
+        if (session.getAttribute(OperatorLoginController.PENDING) instanceof OperatorLoginController.Pending) {
+            operatorSessions.remove(session.getId());
+            session.removeAttribute(OperatorLoginController.PENDING);
+        }
         request.changeSessionId();
         GithubSession.start(request.getSession(false));
         var csrf = new HttpSessionCsrfTokenRepository();
