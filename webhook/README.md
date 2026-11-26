@@ -25,14 +25,14 @@ Terraform은 `src/`만 압축해 배포한다(`infra/envs/prod/main.tf`의 `lamb
 | 서명이 없거나 틀림 | `401` | 없음 |
 | 비밀값이 초기값 `CHANGE_ME`이거나 32자보다 짧음 | `503` | 없음 |
 | `X-GitHub-Delivery`, `X-GitHub-Event` 헤더가 없거나 형식이 틀림 | `400` | 없음 |
-| 큐로 넘기지 않는 이벤트(`ping`, `pull_request_review` 등) | `200` | 없음 |
-| `installation`, `installation_repositories`, `push`, `pull_request`, `issues` | `202` | S3 원본, SQS 메시지 |
+| 큐로 넘기지 않는 이벤트(`ping` 등) | `200` | 없음 |
+| `installation`, `installation_repositories`, `push`, `pull_request`, `pull_request_review`, `issues` | `202` | S3 원본, SQS 메시지 |
 | S3 또는 SQS 저장 실패 | `500` | GitHub가 실패로 기록한다. GitHub는 자동으로 다시 보내지 않으므로 GitHub App 설정의 Recent Deliveries에서 다시 보낸다 |
 
 - 서명은 API Gateway가 넘겨준 원본 바이트로 검증한다.
 - S3 키는 `YYYY-MM-DD/<delivery_id>.json`이다. 원본 버킷의 보관 기간 규칙이 버킷 전체에 적용되므로 객체 태그를 붙이지 않는다.
-- SQS 메시지 형식은 `Onezero-GDGoC-DJU/2026URP`의 `docs/contracts/sqs-message.schema.json`과 같다.
-- 큐로 넘기는 이벤트는 worker가 처리하는 이벤트와 같아야 한다. `pull_request_review`는 worker가 처리하게 되면 `QUEUED_EVENTS`에 추가한다(T-23).
+- SQS 메시지 형식은 `Onezero-GDGoC-DJU/2026URP`의 `docs/contracts/sqs-message.schema.json`과 같다. 다만 `event` 값에 `pull_request_review`를 더 쓴다([worker 원본 표](../backend/worker/README.md#원본)).
+- 큐로 넘기는 이벤트(`QUEUED_EVENTS`)는 worker가 처리하는 이벤트와 같아야 한다.
 - 비밀값은 Parameter Store에서 읽고 5분 동안 메모리에 둔다.
 - Lambda 제한 시간은 GitHub가 응답을 기다리는 시간과 같은 10초다.
 - 로그에는 결과, 이벤트, delivery ID만 남기고 본문, 서명, 비밀값은 남기지 않는다.
@@ -72,7 +72,7 @@ WEBHOOK_SECRET=<LOCAL_WEBHOOK_SECRET 값> python webhook/tools/send_test_webhook
 
 | RepoScope 경로 | 원본 경로 | 변경 |
 |---|---|---|
-| `src/handler.py` | `lambda/ingest/src/handler.py` | S3 객체 태그 제거, `pull_request_review`를 큐 대상에서 제외, 목록 이름을 `QUEUED_EVENTS`로 변경 |
+| `src/handler.py` | `lambda/ingest/src/handler.py` | S3 객체 태그 제거, 목록 이름을 `QUEUED_EVENTS`로 변경 |
 | `tests/test_handler.py` | `lambda/ingest/tests/test_handler.py` | 위 변경에 맞춘 테스트 추가, 자원 이름을 RepoScope 값으로 변경 |
 | `local/server.py` | `compose/local/ingest/server.py` | 핸들러 경로 변경 |
 | `local/Dockerfile` | `compose/local/ingest/Dockerfile` | moto 초기화는 `moto-init` 서비스가 하므로 제거, 실행 사용자 분리 |

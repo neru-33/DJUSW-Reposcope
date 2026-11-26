@@ -185,7 +185,7 @@ def test_database_failure_rolls_back_claim_and_partial_rows_then_retries(databas
     assert send(processor, 'installation.created', 'retry-me') == 'PROCESSED'
 
 
-@pytest.mark.parametrize('name', ['push', 'pull_request.opened', 'issues.opened'])
+@pytest.mark.parametrize('name', ['push', 'pull_request.opened', 'pull_request_review.submitted', 'issues.opened'])
 def test_activity_events_for_unregistered_repos_are_ignored(database, name):
     processor = EventProcessor(database)
     assert send(processor, name) == 'IGNORED'                       # repo 행 없음
@@ -250,6 +250,120 @@ def test_pull_request_merge_is_final_and_late_open_does_not_regress(database):
     prs = activities(database, 'PR')
     assert list(prs) == ['7']
     assert prs['7'][:4] == (20000002, 'example-teammate', '로그인 화면 추가', 'merged')
+
+
+def test_unmerged_closed_pr_is_not_reopened_by_late_open(database):
+    processor = EventProcessor(database)
+    send(processor, 'installation.created')
+    closed = fixture('pull_request.closed')
+    closed['pull_request'].update(merged=False, merged_at=None, merge_commit_sha=None, merged_by=None)
+    send(processor, 'pull_request', payload=closed)
+    send(processor, 'pull_request.opened')                          # 늦게 도착한 opened
+    with database() as conn:
+        assert conn.execute("SELECT state, merged_at FROM activities WHERE kind = 'PR'").fetchall() == [
+            ('closed', None)]
+
+
+def merged_at(database):
+    with database() as conn:
+        row = conn.execute("SELECT merged_at FROM activities WHERE kind = 'PR' AND ref = '7'").fetchone()
+    return row[0].isoformat() if row and row[0] else None
+
+
+def test_merged_at_is_not_cleared_by_events_without_it(database):
+    processor = EventProcessor(database)
+    send(processor, 'installation.created')
+    send(processor, 'pull_request.opened')
+    assert merged_at(database) is None
+    send(processor, 'pull_request.closed')
+    assert merged_at(database) == '2026-11-03T03:30:00+00:00'
+    send(processor, 'pull_request.opened')                          # 늦게 도착한 opened (merged_at 없음)
+    edited = fixture('pull_request.closed')
+    edited['action'] = 'edited'
+    del edited['pull_request']['merged_at']
+    send(processor, 'pull_request', payload=edited)
+    assert merged_at(database) == '2026-11-03T03:30:00+00:00'
+    with database() as conn:
+        assert conn.execute("SELECT state FROM activities WHERE kind = 'PR'").fetchall() == [('merged',)]
+
+
+def reviews(database):
+    with database() as conn:
+        return {r[0]: r[1:] for r in conn.execute(
+            'SELECT ref, parent_ref, actor_github_id, actor_login, title, state, occurred_at, merged_at, url '
+            "FROM activities WHERE kind = 'REVIEW' ORDER BY ref").fetchall()}
+
+
+def test_review_stores_parent_pr_and_lowercase_state_before_pr_row(database):
+    processor = EventProcessor(database)
+    send(processor, 'installation.created')
+    upper = fixture('pull_request_review.submitted')
+    upper['review']['state'] = 'APPROVED'
+    assert send(processor, 'pull_request_review', payload=upper) == 'PROCESSED'   # PR 행 없이 먼저 도착
+    review = reviews(database)['50000001']
+    assert review[:5] == ('7', 20000001, 'example-student', None, 'approved')
+    assert review[5].isoformat() == '2026-11-03T02:40:00+00:00' and review[6] is None
+    assert review[7] == 'https://github.com/example-student/team-project/pull/7#pullrequestreview-50000001'
+    with database() as conn:
+        dump = ' '.join(r[0] for r in conn.execute('SELECT row_to_json(a)::text FROM activities a'))
+    assert '@' not in dump and '검증 로직 확인' not in dump
+
+
+@pytest.mark.parametrize('state', ['pending', 'PENDING'])
+def test_pending_review_is_not_stored(database, state):
+    processor = EventProcessor(database)
+    send(processor, 'installation.created')
+    pending = fixture('pull_request_review.submitted')
+    pending['review'].update(state=state, submitted_at=None)
+    assert send(processor, 'pull_request_review', payload=pending) == 'PROCESSED'
+    assert reviews(database) == {}
+
+
+def test_submitted_review_without_submitted_at_fails(database):
+    processor = EventProcessor(database)
+    send(processor, 'installation.created')
+    broken = fixture('pull_request_review.submitted')
+    broken['review']['submitted_at'] = None
+    with pytest.raises(ValueError):
+        send(processor, 'pull_request_review', 'retry-review', broken)
+    with database() as conn:
+        assert conn.execute("SELECT count(*) FROM processed_deliveries WHERE delivery_id = 'retry-review'"
+                            ).fetchone() == (0,)
+    assert reviews(database) == {}
+
+
+def test_duplicate_review_is_stored_once(database):
+    processor = EventProcessor(database)
+    send(processor, 'installation.created')
+    assert send(processor, 'pull_request_review.submitted', 'same-review') == 'PROCESSED'
+    assert send(processor, 'pull_request_review.submitted', 'same-review') == 'DUPLICATE'
+    assert send(processor, 'pull_request_review.submitted') == 'PROCESSED'     # 같은 리뷰, 다른 delivery
+    assert list(reviews(database)) == ['50000001']
+
+
+def test_dismissed_review_is_final(database):
+    processor = EventProcessor(database)
+    send(processor, 'installation.created')
+    send(processor, 'pull_request_review.submitted')
+    send(processor, 'pull_request_review.dismissed')
+    send(processor, 'pull_request_review.submitted')                # 늦게 도착한 submitted
+    edited = fixture('pull_request_review.submitted')
+    edited['action'] = 'edited'
+    send(processor, 'pull_request_review', payload=edited)
+    assert reviews(database)['50000001'][4] == 'dismissed'
+
+
+def test_review_conflict_keeps_actor_and_occurred_at(database):
+    processor = EventProcessor(database)
+    send(processor, 'installation.created')
+    send(processor, 'pull_request_review.submitted')
+    changed = fixture('pull_request_review.submitted')
+    changed['review']['user'] = {'login': 'example-teammate', 'id': 20000002, 'type': 'User'}
+    changed['review'].update(submitted_at='2026-11-04T00:00:00Z', state='commented')
+    send(processor, 'pull_request_review', payload=changed)
+    review = reviews(database)['50000001']
+    assert review[1:3] == (20000001, 'example-student') and review[4] == 'commented'
+    assert review[5].isoformat() == '2026-11-03T02:40:00+00:00'
 
 
 def test_issue_close_reopen_and_delete(database):

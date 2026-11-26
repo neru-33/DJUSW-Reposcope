@@ -25,7 +25,8 @@ class Message:
             raise ValueError('Unsupported message schema')
         if body.get('source') not in ('webhook', 'reconcile', 'backfill'):
             raise ValueError('Unsupported source')
-        if body.get('event') not in ('installation', 'installation_repositories', 'push', 'pull_request', 'issues'):
+        if body.get('event') not in ('installation', 'installation_repositories', 'push', 'pull_request',
+                                     'pull_request_review', 'issues'):
             raise ValueError('Unsupported event')
         delivery = body.get('delivery_id')
         key = body.get('s3_key')

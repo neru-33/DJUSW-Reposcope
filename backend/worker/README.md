@@ -13,16 +13,19 @@ SQS <접두어>-events → worker → S3 <접두어>-raw-events (원본) → Pos
 
 | RepoScope 경로 | 원본 경로 | 변경 |
 |---|---|---|
-| `events.py`, `activities.py`, `message.py`, `queue.py`, `log.py`, `__init__.py`, `requirements.txt`, `Dockerfile` | `backend/worker/` 같은 이름 | 없음 |
+| `queue.py`, `log.py`, `__init__.py`, `requirements.txt`, `Dockerfile` | `backend/worker/` 같은 이름 | 없음 |
+| `message.py` | `backend/worker/message.py` | 메시지 `event` 값에 `pull_request_review` 추가. 원본 계약 `docs/contracts/sqs-message.schema.json`의 `event` 값에는 없다 |
+| `events.py` | `backend/worker/events.py` | `pull_request_review`를 활동 처리로 넘김 |
+| `activities.py` | `backend/worker/activities.py` | 리뷰 저장, `parent_ref`·`merged_at` 저장, 리뷰의 `dismissed`를 최종 상태로 처리 |
 | `tests/test_queue.py`, `tests/test_github.py` | `backend/worker/tests/` 같은 이름 | 없음 |
-| `tests/fixtures/github/*.json` | `fixtures/github/*.json` | 없음 |
+| `tests/fixtures/github/*.json` | `fixtures/github/*.json` | 없음. `pull_request_review.*.json`은 RepoScope에서 추가 |
 | `tests/contract/db-schema.sql` | `docs/contracts/db-schema.sql` | 없음 |
 | `__main__.py` | `backend/worker/__main__.py` | 과거 기록 스레드 제거, 시작 시 `INGEST_SCHEMA` 스키마 생성 |
 | `config.py` | `backend/worker/config.py` | `BACKFILL`, `BACKFILL_DAYS` 제거, `INGEST_SCHEMA` 추가 |
 | `db.py` | `backend/worker/db.py` | 접속 `search_path`를 `INGEST_SCHEMA`로 지정, `ensure_schema` 추가(스키마가 없을 때만 생성) |
 | `github.py` | `backend/worker/github.py` | `User-Agent`를 `reposcope-worker`로 변경 |
 | `tests/test_config.py` | `backend/worker/tests/test_config.py` | 과거 기록 테스트 제거, `INGEST_SCHEMA` 테스트 추가 |
-| `tests/test_database.py` | `backend/worker/tests/test_database.py` | 과거 기록 테스트 제거, 계약 비교에 V9 포함(컬럼·제약·인덱스), 스키마 분리 테스트 추가 |
+| `tests/test_database.py` | `backend/worker/tests/test_database.py` | 과거 기록 테스트 제거, 계약 비교에 V9 포함(컬럼·제약·인덱스), 스키마 분리 테스트 추가, 리뷰·병합 시각 테스트 추가 |
 
 과거 기록 가져오기(`backfill.py`)는 가져오지 않았다. T-22에서 추가한다.
 
@@ -30,10 +33,12 @@ SQS <접두어>-events → worker → S3 <접두어>-raw-events (원본) → Pos
 
 - `processed_deliveries`로 같은 `delivery_id`를 한 번만 반영한다. 동시에 들어온 중복도 같은 트랜잭션에서 하나만 처리된다.
 - 처리 결과를 DB에 커밋한 뒤에만 SQS 메시지를 삭제한다. 실패하면 삭제하지 않으므로 5회 수신 뒤 DLQ로 이동한다.
-- 활동은 `(repo_id, kind, ref)`로 upsert한다. 늦게 도착한 `opened`는 `closed`·`merged`를 되돌리지 않고, `merged`는 최종 상태다.
+- 활동은 `(repo_id, kind, ref)`로 upsert한다. 늦게 도착한 `opened`는 `closed`·`merged`를 되돌리지 않고, PR의 `merged`와 리뷰의 `dismissed`는 최종 상태다. 이미 저장한 행의 작성자와 `occurred_at`은 바꾸지 않는다.
+- PR의 `merged_at`은 병합 시각이 있는 이벤트로만 채우고, 값이 없는 이벤트로 지우지 않는다. `merged`인데 병합 시각이 없으면 `NULL`로 둔다.
+- 리뷰는 리뷰 ID를 `ref`, 소속 PR 번호를 `parent_ref`, 제출 시각을 `occurred_at`으로 저장한다. 상태는 소문자로 저장하고 `pending`은 저장하지 않는다. PR 행보다 먼저 와도 저장한다. 제출 시각이 없는 리뷰(`pending` 제외)는 처리 실패로 보고 DLQ로 보낸다.
 - `LINKED`가 아닌 저장소의 활동, 태그 push, 브랜치 삭제는 저장하지 않는다. 대상이 아닌 이벤트는 `IGNORED`로 기록하고 메시지를 삭제한다.
-- 커밋은 메시지 첫 줄만 저장한다. 이메일, 커밋 본문, PR·이슈 본문, diff는 저장하지 않는다. 로그에는 ID와 오류 종류만 남긴다.
-- 처리하는 이벤트는 `installation`, `installation_repositories`, `push`, `pull_request`, `issues`다. 그 밖의 이벤트는 메시지 파싱에서 실패해 DLQ로 간다. 리뷰(`pull_request_review`)와 `parent_ref`, `merged_at` 저장은 T-23에서 추가한다.
+- 커밋은 메시지 첫 줄만 저장한다. 이메일, 커밋 본문, PR·이슈·리뷰 본문, diff는 저장하지 않는다. 로그에는 ID와 오류 종류만 남긴다.
+- 처리하는 이벤트는 `installation`, `installation_repositories`, `push`, `pull_request`, `pull_request_review`, `issues`다. 그 밖의 이벤트는 메시지 파싱에서 실패해 DLQ로 간다.
 
 ## 마이그레이션
 
