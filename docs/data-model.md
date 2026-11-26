@@ -43,6 +43,15 @@ erDiagram
 
 ## 4. `capstone` 스키마
 
+### `operator_bootstrap`
+
+최초 최고관리자 초기화 여부를 한 번만 기록한다. 계정 삭제 후에도 기록을 유지한다.
+
+| 컬럼 | 타입 | 설명 |
+|---|---|---|
+| `singleton` | `boolean` PK | `true` 한 행만 허용 |
+| `completed_at` | `timestamptz` | 초기화 완료 시각 |
+
 ### `projects`
 
 프로젝트 기본정보를 저장한다. (R-3, R-5, R-11)
@@ -359,6 +368,7 @@ date_trunc('week', a.occurred_at AT TIME ZONE 'Asia/Seoul')
 ## 9. 마이그레이션
 
 - `capstone` 스키마는 Spring API가 Flyway로 적용한다. 파일은 `backend/api/src/main/resources/db/migration/`에 둔다.
+- 최초 관리자 초기화 기록 테이블은 반복 마이그레이션으로 만들며, 다시 적용해도 기존 기록을 유지한다. 테이블 구조 변경은 별도 버전 마이그레이션으로 처리한다.
 - 수집·계정 영역은 `backend/migrations/`의 SQL을 worker가 시작할 때 적용한다.
 - 스키마 이름은 capstone 영역은 `CAPSTONE_SCHEMA`(기본 `capstone`), 수집·계정 영역은 `INGEST_SCHEMA`(기본 `public`)로 받는다.
 - 두 영역의 이력은 따로 관리한다. 한 PR에서 두 영역을 함께 바꾸면 수집 영역을 먼저 적용한다.

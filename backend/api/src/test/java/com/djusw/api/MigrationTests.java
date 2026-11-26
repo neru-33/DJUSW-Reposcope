@@ -28,7 +28,7 @@ class MigrationTests {
                 SELECT table_name FROM information_schema.tables
                 WHERE table_schema = ? AND table_name <> 'flyway_schema_history'
                 ORDER BY table_name""", String.class, schema);
-        assertEquals(List.of("audit_logs", "deliverables", "project_invites", "project_members",
+        assertEquals(List.of("audit_logs", "deliverables", "operator_bootstrap", "project_invites", "project_members",
                 "project_repos", "project_status_history", "projects"), tables);
     }
 

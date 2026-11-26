@@ -17,6 +17,8 @@ import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -40,11 +42,18 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 @Import(SecurityTests.TestEndpoints.class)
 class SecurityTests {
     @Autowired WebApplicationContext context;
+    @Autowired tools.jackson.databind.ObjectMapper mapper;
+    @MockitoBean OperatorLoginService operatorLogin;
+    @MockitoBean OperatorSessionService operatorSessions;
     private MockMvc mvc;
 
     @BeforeEach
     void setUp() {
         mvc = MockMvcBuilders.webAppContextSetup(context).apply(springSecurity()).build();
+        org.mockito.Mockito.when(operatorSessions.register(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyString())).thenReturn(true);
+        org.mockito.Mockito.when(operatorSessions.valid(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.nullable(CurrentUser.class))).thenReturn(true);
     }
 
     @Test
@@ -267,16 +276,44 @@ class SecurityTests {
 
     @Test
     void operatorLoginIsExemptAndCanObtainTokenForLaterRequests() throws Exception {
-        var result = mvc.perform(post("/auth/admin/login"))
+        org.mockito.Mockito.when(operatorLogin.login(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString()))
+                .thenReturn(new OperatorLoginService.Result(OperatorLoginService.ResultType.OK, 1L, "OTP"));
+        String password = java.util.UUID.randomUUID().toString();
+        var result = mvc.perform(post("/auth/admin/login").contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(new OperatorLoginController.LoginRequest("test-operator", password))))
                 .andExpect(status().isOk()).andReturn();
-        String token = result.getResponse().getContentAsString();
+        String token = mapper.readTree(result.getResponse().getContentAsString()).get("csrf_token").asString();
         var session = (MockHttpSession) result.getRequest().getSession(false);
         org.junit.jupiter.api.Assertions.assertNotNull(session);
         org.junit.jupiter.api.Assertions.assertFalse(token.isBlank());
+        var state = mvc.perform(get("/auth/admin/state").session(session))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.stage").value("OTP")).andReturn();
+        String stateToken = mapper.readTree(state.getResponse().getContentAsString()).get("csrf_token").asString();
         mvc.perform(post("/api/test/write").session(session).header("X-CSRF-Token", token))
                 .andExpect(status().isUnauthorized()).andExpect(jsonPath("$.error").value("unauthorized"));
         mvc.perform(post("/api/test/write").session(session).with(authentication(user(CurrentUser.Role.ADMIN)))
-                        .header("X-CSRF-Token", token)).andExpect(status().isOk());
+                        .header("X-CSRF-Token", stateToken)).andExpect(status().isOk());
+    }
+
+    @Test
+    void operatorLoginReplacesExistingSessionIdAndCsrfToken() throws Exception {
+        var before = mvc.perform(get("/api/test/csrf").with(authentication(user(CurrentUser.Role.STUDENT))))
+                .andExpect(status().isOk()).andReturn();
+        var session = (MockHttpSession) before.getRequest().getSession(false);
+        String oldId = session.getId();
+        String oldToken = before.getResponse().getContentAsString();
+        org.mockito.Mockito.when(operatorLogin.login(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString()))
+                .thenReturn(new OperatorLoginService.Result(OperatorLoginService.ResultType.OK, 1L, "OTP"));
+        String password = java.util.UUID.randomUUID().toString();
+        var result = mvc.perform(post("/auth/admin/login").session(session).contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(new OperatorLoginController.LoginRequest("test-operator", password))))
+                .andExpect(status().isOk()).andReturn();
+        String newToken = mapper.readTree(result.getResponse().getContentAsString()).get("csrf_token").asString();
+        org.junit.jupiter.api.Assertions.assertNotEquals(oldId, session.getId());
+        mvc.perform(post("/api/test/write").session(session).with(authentication(user(CurrentUser.Role.ADMIN)))
+                        .header("X-CSRF-Token", oldToken)).andExpect(status().isForbidden());
+        mvc.perform(post("/api/test/write").session(session).with(authentication(user(CurrentUser.Role.ADMIN)))
+                        .header("X-CSRF-Token", newToken)).andExpect(status().isOk());
     }
 
     @Test
@@ -395,7 +432,6 @@ class SecurityTests {
             users.requireRole(CurrentUser.Role.SUPER_ADMIN, CurrentUser.Role.ADMIN);
         }
         @GetMapping("/api/test/csrf") String token(HttpServletRequest request) { return csrf.tokenFor(request); }
-        @PostMapping("/auth/admin/login") String login(HttpServletRequest request) { return csrf.tokenFor(request); }
         @PostMapping("/api/test/write") void postWrite() {}
         @PostMapping(value = "/api/test/json", consumes = "application/json") void json() {}
         @PatchMapping("/api/test/write") void patchWrite() {}

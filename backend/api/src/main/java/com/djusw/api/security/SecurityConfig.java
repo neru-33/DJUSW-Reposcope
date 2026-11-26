@@ -5,6 +5,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.DispatcherType;
 import java.io.IOException;
 import java.net.URI;
+import java.time.Clock;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -26,18 +27,24 @@ import tools.jackson.databind.ObjectMapper;
 @Configuration
 public class SecurityConfig {
     @Bean
+    Clock operatorClock() {
+        return Clock.systemUTC();
+    }
+
+    @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http, ObjectMapper mapper, CurrentUserService users,
+                                             OperatorSessionService operatorSessions,
                                              @Qualifier("corsConfigurationSource") CorsConfigurationSource corsSource) throws Exception {
         var csrfTokens = new HttpSessionCsrfTokenRepository();
         csrfTokens.setHeaderName("X-CSRF-Token");
         var corsFilter = new CorsFilter(corsSource);
         http.addFilterAt(corsFilter, CorsFilter.class)
-            .addFilterBefore(new GithubSessionExpiryFilter(), CsrfFilter.class)
+            .addFilterBefore(new GithubSessionExpiryFilter(operatorSessions, users), CsrfFilter.class)
             .authorizeHttpRequests(authorize -> authorize
                 .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/health", "/api/version",
-                        "/auth/github/login", "/auth/github/callback").permitAll()
-                .requestMatchers(HttpMethod.POST, "/auth/admin/login").permitAll()
+                        "/auth/github/login", "/auth/github/callback", "/auth/admin/state", "/auth/admin/otp/setup").permitAll()
+                .requestMatchers(HttpMethod.POST, "/auth/admin/login", "/auth/admin/password", "/auth/admin/otp/setup", "/auth/admin/otp").permitAll()
                 .anyRequest().authenticated())
             .logout(logout -> logout.disable())
             .csrf(csrf -> csrf.csrfTokenRepository(csrfTokens)
@@ -49,7 +56,10 @@ public class SecurityConfig {
                         writeError(response, mapper, 401, "unauthorized", "로그인이 필요합니다."))
                 .accessDeniedHandler((request, response, exception) -> {
                     if (exception instanceof CsrfException) {
-                        if (!users.isLoggedIn()) {
+                        var session = request.getSession(false);
+                        boolean pending = session != null && session.getAttribute(OperatorLoginController.PENDING)
+                                instanceof OperatorLoginController.Pending;
+                        if (!users.isLoggedIn() && !pending) {
                             writeError(response, mapper, 401, "unauthorized", "로그인이 필요합니다.");
                         } else {
                             writeError(response, mapper, 403, "csrf", "CSRF 토큰을 확인하세요.");

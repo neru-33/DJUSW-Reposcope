@@ -97,6 +97,8 @@ aws freetier get-account-plan-state --region us-east-1
 5. `terraform plan`으로 결과를 확인한 뒤 `terraform apply`를 실행한다.
 6. 비밀값을 Parameter Store에 넣는다. Terraform은 값을 읽지도 바꾸지도 않는다.
 
+   `operator-otp-key`에는 세션과 별도로 생성한 32바이트 임의 키의 Base64 값을 넣는다. 이 키는 API 인스턴스와 재배포 간에 유지하며, 변경하거나 잃으면 기존 OTP 비밀키를 복호화할 수 없다. 비밀값이 셸 기록이나 로그에 남지 않도록 안전하게 입력한다.
+
    ```bash
    aws ssm put-parameter --name /reposcope/<이름> --type SecureString --overwrite --value "<값>"
    ```
@@ -234,7 +236,7 @@ EC2 역할에는 GitHub App 키를 읽는 권한이 있다. 인스턴스 메타�
 | api | `API_IMAGE`로 받은 이미지. 8080은 호스트에 열지 않고 `expose`만 한다 |
 | cloudflared | Cloudflare로 먼저 연결해 터널을 만든다. 요청은 `http://api:8080`으로 넘긴다. 자동으로 다시 시작한다 |
 | api 환경 변수 | `SESSION_COOKIE_SECURE=true`, `CORS_ALLOWED_ORIGIN`과 `FRONTEND_URL`은 `https://www.eclipse-sync.com`. `GITHUB_CLIENT_ID`와 `GITHUB_CALLBACK_URL`은 GitHub App 사용자 인증에 쓴다 |
-| 비밀값 | `DB_PASSWORD`, `TUNNEL_TOKEN`, `GITHUB_CLIENT_SECRET`은 파일에 쓰지 않는다. 배포 스크립트가 Parameter Store에서 읽어 환경 변수로 넘긴다. GitHub App 키(`github-app-key`)는 `/etc/<name_prefix>/secrets/github-app-key`(root 소유, worker만 읽는 권한)에 파일로 두고 worker에 읽기 전용으로 붙인다 |
+| 비밀값 | `DB_PASSWORD`, `TUNNEL_TOKEN`, `GITHUB_CLIENT_SECRET`, `OPERATOR_OTP_KEY`는 파일에 쓰지 않는다. 배포 스크립트가 Parameter Store에서 읽어 환경 변수로 넘긴다. GitHub App 키(`github-app-key`)는 `/etc/<name_prefix>/secrets/github-app-key`(root 소유, worker만 읽는 권한)에 파일로 두고 worker에 읽기 전용으로 붙인다 |
 | 터널 토큰 | Terraform이 만들지 않는다. 운영자가 Cloudflare 대시보드에서 복사해 Parameter Store(SecureString)에 넣는다 |
 
 **IMDS 차단**: api와 `cloudflared`는 고정 대역(`172.28.0.0/24`)의 `edge` 네트워크만 쓴다. EC2의 user_data가 설치하는 systemd 단위(`<name_prefix>-block-imds.service`)가 부팅할 때마다 `docker.service`보다 먼저 이 대역에서 `169.254.169.254`로 가는 요청을 막는 규칙을 DOCKER-USER 체인에 넣는다. 재부팅이나 중지 후 시작에도 컨테이너가 뜨기 전에 규칙이 적용되므로 따로 실행할 것이 없다. 규칙을 넣지 못하면 Docker도 시작하지 않으므로, 컨테이너가 모두 멈춰 있으면 `systemctl status <name_prefix>-block-imds.service`부터 확인한다. worker는 EC2 역할이 필요하므로 이 네트워크에 넣지 않는다.

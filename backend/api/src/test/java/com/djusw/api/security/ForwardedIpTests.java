@@ -4,27 +4,25 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Import;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RestController;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.*;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = {"DB_USER=test", "DB_PASSWORD=test", "FRONTEND_URL=https://www.eclipse-sync.com",
                 "CORS_ALLOWED_ORIGIN=https://www.eclipse-sync.com"})
-@Import(ForwardedIpTests.TestEndpoints.class)
 class ForwardedIpTests {
     @LocalServerPort int port;
     @Value("${app.frontend-url}") String frontendUrl;
+    @MockitoBean OperatorLoginService operatorLogin;
+    @Autowired tools.jackson.databind.ObjectMapper mapper;
 
     @Test
     void resolvesFrontendUrlFromEnvironmentProperty() {
@@ -66,29 +64,24 @@ class ForwardedIpTests {
     void tomcatUsesCloudflareHeaderInsteadOfForwardedFor() throws Exception {
         var client = HttpClient.newHttpClient();
         var uri = URI.create("http://127.0.0.1:" + port + "/auth/admin/login");
+        when(operatorLogin.login(anyString(), anyString(), anyString()))
+                .thenReturn(OperatorLoginService.Result.failure(OperatorLoginService.ResultType.INVALID));
+        String username = java.util.UUID.randomUUID().toString();
+        String password = java.util.UUID.randomUUID().toString();
+        String body = mapper.writeValueAsString(new OperatorLoginController.LoginRequest(username, password));
         var withBoth = HttpRequest.newBuilder(uri)
+                .header("Content-Type", "application/json")
                 .header("CF-Connecting-IP", "203.0.113.10")
-                .header("X-Forwarded-For", "198.51.100.20").POST(HttpRequest.BodyPublishers.noBody()).build();
+                .header("X-Forwarded-For", "198.51.100.20").POST(HttpRequest.BodyPublishers.ofString(body)).build();
         var response = client.send(withBoth, HttpResponse.BodyHandlers.ofString());
-        assertEquals(200, response.statusCode());
-        assertEquals("203.0.113.10", response.body());
+        assertEquals(401, response.statusCode());
+        verify(operatorLogin).login(username, password, "203.0.113.10");
 
         var withForwardedForOnly = HttpRequest.newBuilder(uri)
-                .header("X-Forwarded-For", "198.51.100.20").POST(HttpRequest.BodyPublishers.noBody()).build();
+                .header("Content-Type", "application/json")
+                .header("X-Forwarded-For", "198.51.100.20").POST(HttpRequest.BodyPublishers.ofString(body)).build();
         var withoutCloudflare = client.send(withForwardedForOnly, HttpResponse.BodyHandlers.ofString());
-        assertEquals(200, withoutCloudflare.statusCode());
-        assertNotEquals("198.51.100.20", withoutCloudflare.body());
-        assertEquals("127.0.0.1", withoutCloudflare.body());
-    }
-
-    @TestConfiguration
-    static class TestEndpoints {
-        @Bean IpController ipController() { return new IpController(); }
-    }
-
-    @RestController
-    static class IpController {
-        @PostMapping("/auth/admin/login")
-        String remoteAddress(HttpServletRequest request) { return request.getRemoteAddr(); }
+        assertEquals(401, withoutCloudflare.statusCode());
+        verify(operatorLogin).login(username, password, "127.0.0.1");
     }
 }
