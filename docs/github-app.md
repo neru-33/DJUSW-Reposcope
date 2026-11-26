@@ -44,7 +44,7 @@ Repository permissions만 사용하고 모두 읽기 전용이다. Organization 
 | Request user authorization during installation | 사용 안 함 |
 | Device Flow | 사용 안 함 |
 | Callback URL | `https://api.eclipse-sync.com/auth/github/callback` (api는 Cloudflare Tunnel로 받는다. [결정 기록](decisions/0001-deploy-domain-tls.md)) |
-| Setup URL | 배포 주소가 정해진 뒤 설정 |
+| Setup URL | 비워 둠 |
 
 ## Webhook
 
@@ -54,7 +54,7 @@ Repository permissions만 사용하고 모두 읽기 전용이다. Organization 
 | Webhook URL | API Gateway 주소(`infra/envs/prod`의 `terraform output webhook_url`) |
 | Webhook secret | Parameter Store `/reposcope/webhook-secret`과 같은 값 |
 
-수신 Lambda는 `X-Hub-Signature-256` 서명을 검사한다. 서명이 맞으면 2xx, 틀리면 401로 응답한다. 응답 코드는 App 설정의 Advanced → Recent Deliveries에서 확인한다.
+수신 Lambda는 `X-Hub-Signature-256` 서명을 검사한다. 서명이 맞으면 2xx, 틀리면 401로 응답한다. Parameter Store의 secret이 초기값(`CHANGE_ME`)이거나 32자 미만이면 서명을 검사하지 않고 503으로 응답한다. 응답 코드는 App 설정의 Advanced → Recent Deliveries에서 확인한다.
 
 Webhook secret을 바꿀 때는 아래 순서를 따른다.
 
