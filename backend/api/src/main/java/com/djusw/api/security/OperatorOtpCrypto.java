@@ -18,6 +18,10 @@ class OperatorOtpCrypto {
 
     OperatorOtpCrypto(@Value("${app.operator.otp-key:}") String configuredKey) {
         this.configuredKey = configuredKey;
+        if (!configuredKey.isEmpty()) {
+            byte[] key = decodeKey();
+            java.util.Arrays.fill(key, (byte) 0);
+        }
     }
 
     String encrypt(long userId, String secret) {
@@ -49,6 +53,15 @@ class OperatorOtpCrypto {
     }
 
     private Cipher cipher(int mode, long userId, byte[] nonce) throws GeneralSecurityException {
+        byte[] key = decodeKey();
+        Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+        cipher.init(mode, new SecretKeySpec(key, "AES"), new GCMParameterSpec(128, nonce));
+        cipher.updateAAD(Long.toString(userId).getBytes(StandardCharsets.US_ASCII));
+        java.util.Arrays.fill(key, (byte) 0);
+        return cipher;
+    }
+
+    private byte[] decodeKey() {
         byte[] key;
         try {
             key = Base64.getDecoder().decode(configuredKey);
@@ -56,10 +69,6 @@ class OperatorOtpCrypto {
             throw new IllegalStateException("OPERATOR_OTP_KEY 설정을 확인하세요.");
         }
         if (key.length != 32) throw new IllegalStateException("OPERATOR_OTP_KEY는 Base64로 인코딩한 32바이트 키여야 합니다.");
-        Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-        cipher.init(mode, new SecretKeySpec(key, "AES"), new GCMParameterSpec(128, nonce));
-        cipher.updateAAD(Long.toString(userId).getBytes(StandardCharsets.US_ASCII));
-        java.util.Arrays.fill(key, (byte) 0);
-        return cipher;
+        return key;
     }
 }

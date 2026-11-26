@@ -4,7 +4,7 @@
 |---|---|---|---|---|---|
 | Spring Boot | 4.1.2 | [Spring Boot](https://github.com/spring-projects/spring-boot/tree/v4.1.2) | [Apache-2.0](https://github.com/spring-projects/spring-boot/blob/v4.1.2/LICENSE.txt) | API 서버 및 Web/JDBC 구성 | 라이선스·고지 조건 검토 후 공개 |
 | Spring Security | 7.1.2 | [Spring Security](https://github.com/spring-projects/spring-security/tree/7.1.2) | [Apache-2.0](https://github.com/spring-projects/spring-security/blob/7.1.2/LICENSE.txt) | API 인증·권한 및 CSRF 검사 | 라이선스·고지 조건 검토 후 공개 |
-| Bouncy Castle | 1.80 | [Bouncy Castle](https://www.bouncycastle.org/java.html) | [MIT](https://github.com/bcgit/bc-java/blob/r1rv80/LICENSE.html) | 운영자 비밀번호 scrypt 검증 | 라이선스·고지 조건 검토 후 공개 |
+| Bouncy Castle | 1.80 | [Bouncy Castle](https://www.bouncycastle.org/java.html) | [MIT](https://github.com/bcgit/bc-java/blob/r1rv80/LICENSE.html) | 운영자 비밀번호 scrypt 검증 | 공개 가능. 배포 시 저작권 및 라이선스 고지 유지 |
 | PostgreSQL JDBC Driver | 42.7.14 | [pgJDBC](https://github.com/pgjdbc/pgjdbc/tree/REL42.7.14) | [BSD-2-Clause](https://github.com/pgjdbc/pgjdbc/blob/REL42.7.14/LICENSE) | PostgreSQL 연결 | 라이선스·고지 조건 검토 후 공개 |
 | Flyway (flyway-core, flyway-database-postgresql) | 12.4.0 | [Flyway](https://github.com/flyway/flyway/tree/flyway-12.4.0) | [Apache-2.0](https://github.com/flyway/flyway/blob/flyway-12.4.0/LICENSE.txt) | capstone 스키마 마이그레이션 적용 | 라이선스·고지 조건 검토 후 공개 |
 | Testcontainers (testcontainers-postgresql) | 2.0.5 | [Testcontainers for Java](https://github.com/testcontainers/testcontainers-java/tree/2.0.5) | [MIT](https://github.com/testcontainers/testcontainers-java/blob/2.0.5/LICENSE) | API의 DB 테스트에서 PostgreSQL 컨테이너 실행 | 개발 도구. 실행 파일(jar)에 포함되지 않음 |
