@@ -12,6 +12,8 @@ export function AppLayout() {
   const me = state.me
   const menus = menusFor(me)
   const onAdminPage = location.pathname.startsWith('/admin')
+  // V-1은 본문에 로그인 버튼이 있으므로 상단바에는 두지 않는다.
+  const onStartPage = location.pathname === '/'
   // 로그인 화면으로 보내질 때 붙은 돌아갈 주소가 있으면 로그인 뒤 그곳으로 간다.
   const loginNext = safeNext(searchParams.get('next')) ?? '/explore'
 
@@ -42,7 +44,7 @@ export function AppLayout() {
                 </button>
               </>
             )}
-            {state.status === 'ready' && !me && !onAdminPage && (
+            {state.status === 'ready' && !me && !onAdminPage && !onStartPage && (
               <a className="primary-button" href={githubLoginUrl(loginNext)}>
                 GitHub 로그인
               </a>
