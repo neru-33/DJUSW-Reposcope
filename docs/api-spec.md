@@ -149,7 +149,7 @@
 
 | 메서드 | 경로 | 권한 | 설명 |
 |---|---|---|---|
-| GET | `/api/projects` | 학생, 운영자 | 목록 |
+| GET | `/api/projects` | 학생, 교수, 운영자 | 목록 |
 | GET | `/api/projects/public` | `STUDENT` | 공개 프로젝트 목록 |
 | POST | `/api/projects` | `STUDENT` | 등록, `201` |
 | GET | `/api/projects/{id}` | 공개 조회 권한 | 상세 |
@@ -159,7 +159,7 @@
 | POST | `/api/projects/{id}/status` | 팀장, 운영자 | 진행 상태 변경, `204` |
 | GET | `/api/projects/{id}/status-history` | 공개 조회 권한 | 상태 이력 |
 
-학생은 자기 프로젝트만 받고, 운영자는 전체 프로젝트를 받는다. 교수는 조회만 할 수 있다.
+학생은 자기 프로젝트만 받고, 교수와 운영자는 전체 프로젝트를 받는다. 교수는 조회만 할 수 있다.
 
 `GET /api/projects`의 조회 조건은 `q`, `status`, `include_archived`, `page`, `size`다.
 
@@ -187,7 +187,7 @@
 }
 ```
 
-운영자가 조회하면 `my_role`은 `null`이다. `weekly_activity`는 이번 주를 포함한 최근 16주의 주간 활동 수(커밋, PR, 이슈, 리뷰 합계)이고 마지막 값이 이번 주다. 통계 API(T-44) 전까지는 빈 배열을 준다.
+교수나 운영자가 조회하면 `my_role`은 `null`이다. `weekly_activity`는 이번 주를 포함한 최근 16주의 주간 활동 수(커밋, PR, 이슈, 리뷰 합계)이고 마지막 값이 이번 주다. 통계 API(T-44) 전까지는 빈 배열을 준다.
 
 ### `GET /api/projects/public`
 
