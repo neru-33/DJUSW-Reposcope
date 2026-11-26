@@ -165,4 +165,33 @@ describe('V-2 가입', () => {
 
     expect(await screen.findByText('동의해야 가입할 수 있습니다.')).toBeTruthy()
   })
+
+  it('가입할 수 없는 상태로 거부되면 사유를 폼 안에 보여 준다', async () => {
+    guestWith(() => json({ error: 'forbidden', message: '비활성화된 계정입니다.' }, 403))
+    const router = renderAt('/signup')
+
+    await fill()
+
+    expect((await screen.findByRole('alert')).textContent).toBe('비활성화된 계정입니다.')
+    expect(router.state.location.pathname).toBe('/signup')
+    expect(screen.getByRole('button', { name: '가입' })).toBeTruthy()
+  })
+
+  it('다른 곳에서 이미 가입했으면 거부되어도 둘러보기로 보낸다', async () => {
+    let role: Role = 'GUEST'
+    fetchMock.mockImplementation(async (input, init) => {
+      const url = String(input)
+      if (url.endsWith('/api/me')) return json(me(role))
+      if (url.endsWith('/api/me/profile') && init?.method === 'POST') {
+        role = 'STUDENT'
+        return json({ error: 'forbidden', message: '가입 정보를 저장할 수 없습니다.' }, 403)
+      }
+      return new Response(null, { status: 204 })
+    })
+    const router = renderAt('/signup')
+
+    await fill()
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/explore'))
+  })
 })

@@ -24,6 +24,7 @@ const MESSAGES = {
   name: '이름을 입력하세요.',
   consent: '동의해야 가입할 수 있습니다.',
   duplicate: '이미 가입된 학번입니다. 학번을 다시 확인하세요.',
+  forbidden: '가입 정보를 저장할 수 없습니다. 로그아웃한 뒤 다시 로그인해 시도하세요.',
 }
 
 /** 개인정보 수집·이용 안내. 기준: docs/feature-spec.md R-1 */
@@ -71,6 +72,8 @@ export function SignupPage() {
   const [consent, setConsent] = useState(false)
   const [errors, setErrors] = useState<FieldErrors>({})
   const [saving, setSaving] = useState(false)
+  // 입력란에 붙일 수 없는 가입 실패 사유. 폼 안에 표시한다.
+  const [formError, setFormError] = useState<string | null>(null)
 
   function clearError(field: Field) {
     setErrors((current) => ({ ...current, [field]: undefined }))
@@ -86,6 +89,7 @@ export function SignupPage() {
     }
     const found = validate(input)
     setErrors(found)
+    setFormError(null)
     if (Object.keys(found).length > 0) return
 
     setSaving(true)
@@ -98,8 +102,10 @@ export function SignupPage() {
         setErrors(fieldErrors)
         return
       }
-      // 이미 가입했거나 가입할 수 없는 상태면 현재 사용자를 다시 읽어 맞는 화면으로 보낸다.
+      // 이미 가입했으면 현재 사용자를 다시 읽어 맞는 화면으로 보낸다.
+      // 다시 읽어도 이 화면에 남으면(비활성화된 계정 등) 사유를 폼 안에 보여 준다.
       if (error instanceof ApiError && error.status === 403) {
+        setFormError(error.message && error.message !== error.code ? error.message : MESSAGES.forbidden)
         await reload()
         return
       }
@@ -170,6 +176,12 @@ export function SignupPage() {
               }}
               error={errors.consent}
             />
+
+            {formError && (
+              <Text role="alert" size="sm" c="danger.7">
+                {formError}
+              </Text>
+            )}
 
             <Group justify="flex-end">
               <Button type="submit" loading={saving}>
