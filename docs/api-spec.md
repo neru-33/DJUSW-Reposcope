@@ -208,7 +208,7 @@
 }
 ```
 
-`team_name`, `description`, `starts_on`, `ends_on`, `visibility`는 선택이다. `visibility` 값은 `TEAM`(기본), `STUDENTS`다. 등록한 학생은 팀장이 되고, 응답은 상세 응답과 같다. `PATCH`는 같은 필드 중 바꿀 값만 받는다.
+`team_name`, `description`, `starts_on`, `ends_on`, `visibility`는 선택이다. `visibility` 값은 `TEAM`(기본), `STUDENTS`다. 등록한 학생은 팀장이 되고, 응답은 상세 응답과 같다. `PATCH`는 같은 필드 중 바꿀 값만 받는다. 선택 필드를 `null`로 보내면 해당 값을 지우고, 생략하면 기존 값을 유지한다. `name`과 `visibility`는 `null`로 바꿀 수 없다. 수정 응답은 상세 응답과 같다.
 
 ### `GET /api/projects/{id}`
 

@@ -63,6 +63,8 @@ erDiagram
 | `created_at` | `timestamptz` | NOT NULL | |
 | `updated_at` | `timestamptz` | NOT NULL | |
 
+종료일은 시작일보다 뒤여야 한다. 이전 마이그레이션에서 허용한 같은 날짜의 기존 행은 유지하며, 새로 저장하거나 수정하는 행에는 엄격한 날짜 제약이 적용된다.
+
 | `status` 값 | 화면 표시 |
 |---|---|
 | `PLANNING` | 기획 |
