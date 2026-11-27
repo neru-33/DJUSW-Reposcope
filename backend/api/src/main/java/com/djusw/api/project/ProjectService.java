@@ -27,6 +27,7 @@ class ProjectService {
     private final String accountUsers;
     private final String ingestRepos;
     private final String auditLogs;
+    private final String invites;
 
     ProjectService(JdbcTemplate jdbc, GithubUserRepository users,
                    @Value("${spring.flyway.default-schema}") String schema,
@@ -43,6 +44,7 @@ class ProjectService {
         this.accountUsers = "\"" + ingestSchema + "\".users";
         this.ingestRepos = "\"" + ingestSchema + "\".repos";
         this.auditLogs = "\"" + schema + "\".audit_logs";
+        this.invites = "\"" + schema + "\".project_invites";
     }
 
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
@@ -125,6 +127,95 @@ class ProjectService {
         auditOperator(user, "PROJECT_ARCHIVE", id);
     }
 
+    @Transactional
+    public Invite issueInvite(CurrentUser user, long id) {
+        lockEditableProject(user, id);
+        String code = InviteCode.generate();
+        jdbc.update("UPDATE " + invites + " SET revoked_at = clock_timestamp() "
+                + "WHERE project_id = ? AND revoked_at IS NULL", id);
+        Instant expiresAt = jdbc.queryForObject("WITH issued AS (SELECT clock_timestamp() AS at) INSERT INTO "
+                        + invites + " (project_id, code_hash, created_by, created_at, expires_at) "
+                        + "SELECT ?, ?, ?, at, at + interval '7 days' FROM issued RETURNING expires_at",
+                (rs, row) -> rs.getTimestamp("expires_at").toInstant(), id, InviteCode.hash(code), user.id());
+        auditOperator(user, "PROJECT_INVITE_CREATE", id);
+        return new Invite(code, expiresAt);
+    }
+
+    @Transactional
+    public InviteAccepted acceptInvite(CurrentUser user, String code) {
+        String hash = InviteCode.hash(code);
+        var ids = jdbc.query("SELECT project_id FROM " + invites + " WHERE code_hash = ?",
+                (rs, row) -> rs.getLong("project_id"), hash);
+        if (ids.isEmpty()) throw invalidInvite();
+        long id = ids.getFirst();
+        var project = jdbc.query("SELECT archived_at IS NOT NULL AS archived FROM " + projects + " WHERE id = ? FOR UPDATE",
+                (rs, row) -> rs.getBoolean("archived"), id);
+        if (project.isEmpty()) throw invalidInvite();
+        boolean valid = Boolean.TRUE.equals(jdbc.queryForObject("SELECT EXISTS (SELECT 1 FROM " + invites
+                        + " WHERE project_id = ? AND code_hash = ? AND revoked_at IS NULL AND expires_at > clock_timestamp())",
+                Boolean.class, id, hash));
+        if (!valid) throw invalidInvite();
+        if (project.getFirst())
+            throw new ApiException(HttpStatus.CONFLICT, "project_archived", "보관한 프로젝트는 수정할 수 없습니다.");
+        int changed = jdbc.update("INSERT INTO " + members + " AS m (project_id, user_id, role, joined_at) "
+                        + "VALUES (?, ?, 'MEMBER', clock_timestamp()) ON CONFLICT (project_id, user_id) DO UPDATE "
+                        + "SET role = 'MEMBER', joined_at = clock_timestamp(), removed_at = NULL WHERE m.removed_at IS NOT NULL",
+                id, user.id());
+        if (changed == 0)
+            throw new ApiException(HttpStatus.CONFLICT, "already_member", "이미 참여 중인 프로젝트입니다.");
+        return new InviteAccepted(id);
+    }
+
+    @Transactional
+    public MemberRole updateMemberRole(CurrentUser user, long id, long userId, Map<String, JsonNode> request) {
+        lockEditableProject(user, id);
+        JsonNode value = request == null ? null : request.get("role");
+        if (request == null || request.size() != 1 || value == null || !value.isTextual()
+                || !Set.of("LEADER", "MEMBER").contains(value.asString()))
+            throw new ApiException(HttpStatus.BAD_REQUEST, "invalid_request", "팀원 역할을 확인하세요.");
+        String role = value.asString();
+        String currentRole = activeMemberRole(id, userId);
+        if ("LEADER".equals(currentRole) && "MEMBER".equals(role)) ensureAnotherLeader(id);
+        if (!currentRole.equals(role)) {
+            jdbc.update("UPDATE " + members + " SET role = ? WHERE project_id = ? AND user_id = ?", role, id, userId);
+            auditMemberOperator(user, "PROJECT_MEMBER_ROLE_UPDATE", id, userId);
+        }
+        return new MemberRole(userId, role);
+    }
+
+    @Transactional
+    public void removeMember(CurrentUser user, long id, long userId) {
+        lockEditableProject(user, id);
+        if ("LEADER".equals(activeMemberRole(id, userId))) ensureAnotherLeader(id);
+        jdbc.update("UPDATE " + members + " SET removed_at = clock_timestamp() WHERE project_id = ? AND user_id = ?", id, userId);
+        jdbc.update("UPDATE " + invites + " SET revoked_at = clock_timestamp() WHERE project_id = ? AND revoked_at IS NULL", id);
+        auditMemberOperator(user, "PROJECT_MEMBER_REMOVE", id, userId);
+    }
+
+    private String activeMemberRole(long id, long userId) {
+        var roles = jdbc.query("SELECT role FROM " + members + " WHERE project_id = ? AND user_id = ? AND removed_at IS NULL",
+                (rs, row) -> rs.getString("role"), id, userId);
+        if (roles.isEmpty()) throw new ApiException(HttpStatus.NOT_FOUND, "not_found", "팀원을 찾을 수 없습니다.");
+        return roles.getFirst();
+    }
+
+    private void ensureAnotherLeader(long id) {
+        long leaders = jdbc.queryForObject("SELECT count(*) FROM " + members
+                + " WHERE project_id = ? AND role = 'LEADER' AND removed_at IS NULL", Long.class, id);
+        if (leaders <= 1) throw new ApiException(HttpStatus.CONFLICT, "last_leader", "마지막 팀장은 변경하거나 제외할 수 없습니다.");
+    }
+
+    private void auditMemberOperator(CurrentUser user, String action, long id, long userId) {
+        if (user.role() == CurrentUser.Role.ADMIN || user.role() == CurrentUser.Role.SUPER_ADMIN) {
+            jdbc.update("INSERT INTO " + auditLogs + " (actor_user_id, action, target, at) VALUES (?, ?, ?, now())",
+                    user.id(), action, "project:" + id + "/member:" + userId);
+        }
+    }
+
+    private static ApiException invalidInvite() {
+        return new ApiException(HttpStatus.CONFLICT, "invalid_invite", "유효하지 않은 초대 코드입니다.");
+    }
+
     private ProjectRow lockEditableProject(CurrentUser user, long id) {
         var rows = jdbc.query("SELECT p.* FROM " + projects + " p WHERE p.id = ? FOR UPDATE",
                 (rs, row) -> new ProjectRow(rs.getLong("id"), rs.getString("name"), rs.getString("team_name"),
@@ -188,6 +279,9 @@ class ProjectService {
     }
 
     record CreatedProject(long id, String status, Instant createdAt) {}
+    record Invite(String code, Instant expires_at) {}
+    record InviteAccepted(long project_id) {}
+    record MemberRole(long user_id, String role) {}
     record ProjectRow(long id, String name, String teamName, String description, LocalDate startsOn,
                       LocalDate endsOn, String status, String visibility, String myRole, boolean archived,
                       Instant createdAt) {}

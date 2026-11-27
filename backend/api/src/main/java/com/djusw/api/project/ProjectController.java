@@ -6,6 +6,7 @@ import java.time.LocalDate;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -22,11 +23,14 @@ class ProjectController {
     private final CurrentUserService users;
     private final ProjectService projects;
     private final ProjectListService lists;
+    private final ProjectMemberListService memberLists;
 
-    ProjectController(CurrentUserService users, ProjectService projects, ProjectListService lists) {
+    ProjectController(CurrentUserService users, ProjectService projects, ProjectListService lists,
+                      ProjectMemberListService memberLists) {
         this.users = users;
         this.projects = projects;
         this.lists = lists;
+        this.memberLists = memberLists;
     }
 
     @GetMapping
@@ -60,6 +64,31 @@ class ProjectController {
     @GetMapping("/{id}")
     ProjectService.ProjectDetail detail(@PathVariable long id) {
         return projects.detail(users.requireCompletedProfile(), id);
+    }
+
+    @GetMapping("/{id}/members")
+    ProjectMemberListService.Page members(@PathVariable long id,
+                                          @RequestParam(defaultValue = "1") int page,
+                                          @RequestParam(defaultValue = "50") int size) {
+        return memberLists.list(users.requireCompletedProfile(), id, page, size);
+    }
+
+    @PatchMapping("/{id}/members/{user_id}")
+    ProjectService.MemberRole updateMemberRole(@PathVariable long id, @PathVariable("user_id") long userId,
+                                                @RequestBody Map<String, JsonNode> request) {
+        return projects.updateMemberRole(users.requireCompletedProfile(), id, userId, request);
+    }
+
+    @DeleteMapping("/{id}/members/{user_id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    void removeMember(@PathVariable long id, @PathVariable("user_id") long userId) {
+        projects.removeMember(users.requireCompletedProfile(), id, userId);
+    }
+
+    @PostMapping("/{id}/invites")
+    @ResponseStatus(HttpStatus.CREATED)
+    ProjectService.Invite issueInvite(@PathVariable long id) {
+        return projects.issueInvite(users.requireCompletedProfile(), id);
     }
 
     @PatchMapping("/{id}")
