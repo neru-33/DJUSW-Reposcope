@@ -208,7 +208,7 @@ gh variable set GH_APP_ID --body "<GitHub App ID>"
 gh variable set GH_CLIENT_ID --body "<GitHub App Client ID>"
 ```
 
-변수 이름은 `GITHUB_`로 시작할 수 없어 앱 ID와 Client ID는 `GH_APP_ID`, `GH_CLIENT_ID`로 둔다. 인스턴스가 교체되면(`terraform apply`로 EC2가 새로 만들어지면) `INSTANCE_ID`를 다시 넣는다.
+변수 이름은 `GITHUB_`로 시작할 수 없어 앱 ID와 Client ID는 `GH_APP_ID`, `GH_CLIENT_ID`로 둔다. 과거 기록 가져오기를 계속 꺼 두려면 `gh variable set BACKFILL --body off`를 넣는다. 기간만 줄이려면 `BACKFILL_DAYS`에 일수를 넣는다. 두 변수는 선택이고, 비우면 worker 기본값(켜짐, 전체 기록)이다. 수동 배포의 `BACKFILL`은 다음 자동 배포에서 이 변수 값으로 바뀐다. 인스턴스가 교체되면(`terraform apply`로 EC2가 새로 만들어지면) `INSTANCE_ID`를 다시 넣는다.
 
 **되돌리기**: Actions → deploy → Run workflow에서 `image_tag`에 이전 태그를 넣는다. 이미지와 화면은 새로 만들지 않고 그 태그로 EC2만 다시 배포한다. 화면은 되돌리지 않으므로, 화면도 되돌려야 하면 그 커밋을 다시 `main`에 반영한다. 태그는 ECR에서 확인한다.
 
