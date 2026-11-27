@@ -42,6 +42,7 @@ GitHub App Webhook → API Gateway → Lambda → S3 원본 + SQS(+DLQ) → work
 - `main`에 직접 push하지 않는다. 이슈 번호를 넣은 브랜치에서 작업하고 PR로 합친다.
 - 커밋 메시지와 PR 제목은 Conventional Commits 형식에 폴더 범위를 붙인다. 예: `feat(backend): 프로젝트 API 추가`
 - 맡은 이슈의 범위만 바꾼다. 다른 문제를 발견하면 따로 알린다.
+- 리뷰 의견은 `CONTRIBUTING.md`의 "리뷰 의견 처리" 기준에 따라 이번 PR에서 고치거나 후속 이슈로 나눈다. 재현이 어려운 문제를 막으려고 복잡한 코드를 넣지 않는다.
 - 비밀값, 키 파일, 개인정보를 코드, 테스트, 로그, 커밋에 넣지 않는다. 설정은 환경 변수로만 받는다.
 - 코드, diff, 커밋 작성자 이메일, 커밋 본문, PR·이슈 본문, GitHub 토큰은 DB에 저장하지 않는다.
 - API는 worker 소유 테이블에 쓰지 않는다. worker는 `capstone` 스키마를 읽거나 쓰지 않는다.
