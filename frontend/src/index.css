@@ -240,6 +240,43 @@
   background: #e8edf3;
 }
 
+/* V-13 운영자 로그인: 가운데 좁은 칸 */
+.auth-page {
+  max-width: 400px;
+  margin: 0 auto;
+  padding-top: 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* 안내 칸의 짧은 목록 */
+.guide-list {
+  margin: 12px 0 0;
+  padding-left: 20px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.guide-list li + li {
+  margin-top: 6px;
+}
+
+/* V-14 OTP 등록 QR 코드 */
+.otp-qr {
+  align-self: flex-start;
+  padding: 8px;
+  border: 1px solid #d8dfe8;
+  border-radius: 6px;
+  background: #fff;
+  line-height: 0;
+}
+
+.otp-secret {
+  word-break: break-all;
+  letter-spacing: 0.08em;
+}
+
 /* 외부 로그인 버튼 모양의 GitHub 로그인 */
 .github-button {
   display: inline-flex;
@@ -272,6 +309,10 @@
   .start {
     padding-top: 16px;
     gap: 40px;
+  }
+
+  .auth-page {
+    padding-top: 16px;
   }
 }
 

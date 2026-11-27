@@ -11,8 +11,9 @@ export const roleLabels: Record<Role, string> = {
   GUEST: '가입 전',
 }
 
-/** 가입을 끝내지 않은 사용자인지 */
+/** 가입을 끝내지 않은 사용자인지. 가입은 GitHub으로 로그인한 사용자만 한다. */
 export function needsSignup(me: Me): boolean {
+  if (me.auth !== 'github') return false
   return me.user.role === 'GUEST' || me.profile_required || me.consent_required
 }
 

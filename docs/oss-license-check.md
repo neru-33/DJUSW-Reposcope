@@ -32,6 +32,7 @@
 | oxlint | 1.92.0 | [npm](https://www.npmjs.com/package/oxlint/v/1.92.0) | MIT | 코드 검사 | 개발 도구. 빌드 결과에 포함되지 않음 |
 | Mantine (`@mantine/core`, `@mantine/hooks`, `@mantine/notifications`) | 9.8.1 | [npm](https://www.npmjs.com/package/@mantine/core/v/9.8.1) | MIT | 화면 부품, 테마, 알림 | 공개 가능. 배포 시 라이선스 고지 유지 |
 | Pretendard | 1.3.9 | [npm](https://www.npmjs.com/package/pretendard/v/1.3.9) | OFL-1.1 | 웹 글꼴 | 공개 가능. 글꼴 파일과 함께 라이선스 고지 유지, 글꼴을 단독으로 판매하지 않음 |
+| qrcode.react | 4.2.0 | [npm](https://www.npmjs.com/package/qrcode.react/v/4.2.0) | ISC | 운영자 OTP 등록 QR 코드 표시 | 공개 가능. 배포 시 라이선스 고지 유지 |
 | jsdom | 31.0.1 | [npm](https://www.npmjs.com/package/jsdom/v/31.0.1) | MIT | 화면 테스트의 브라우저 환경 | 개발 도구. 빌드 결과에 포함되지 않음 |
 | Testing Library (`@testing-library/react`, `dom`, `user-event`) | react 16.3.3, dom 10.4.2, user-event 14.6.12 | [npm](https://www.npmjs.com/package/@testing-library/react/v/16.3.3) | MIT | 화면 테스트 | 개발 도구. 빌드 결과에 포함되지 않음 |
 | actions/checkout, actions/setup-java, actions/setup-node | checkout v7, setup-java v6, setup-node v7 | [actions](https://github.com/actions) | MIT | CI 소스 내려받기와 실행 환경 준비 | CI 도구. 저장소 결과물에 포함되지 않음 |
