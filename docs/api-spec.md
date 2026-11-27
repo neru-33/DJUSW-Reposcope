@@ -331,6 +331,8 @@
 
 `kind` 값은 `DOCUMENT`, `SLIDES`, `DEMO_VIDEO`, `REPOSITORY`, `OTHER`다. 응답에는 `id`, `created_by_name`, `created_at`을 추가한다.
 
+목록 응답은 `{ "items": [...] }` 형식이다. 수정 요청은 `kind`, `title`, `url` 중 변경할 항목만 보낼 수 있다. 등록자는 로그인한 사용자로 기록하며 요청에서 지정할 수 없다. 보관한 프로젝트의 결과물은 변경할 수 없다.
+
 ## 8. 저장소 (R-7)
 
 | 메서드 | 경로 | 권한 | 설명 |
