@@ -28,6 +28,6 @@ class InviteController {
         JsonNode code = request == null ? null : request.get("code");
         if (code == null || !code.isTextual())
             throw new ApiException(HttpStatus.BAD_REQUEST, "invalid_request", "초대 코드를 입력하세요.");
-        return projects.acceptInvite(user, code.asString());
+        return projects.acceptInvite(user, code.asString().strip());
     }
 }

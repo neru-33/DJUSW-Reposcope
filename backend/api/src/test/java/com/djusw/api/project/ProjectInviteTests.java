@@ -128,7 +128,7 @@ class ProjectInviteTests {
     @Test
     void acceptsValidCodeAndReactivatesRemovedMember() throws Exception {
         String code = projects.issueInvite(new CurrentUser(leader, CurrentUser.Role.STUDENT), project).code();
-        accept(outsider, CurrentUser.Role.STUDENT, "{\"code\":\"" + code + "\"}")
+        accept(outsider, CurrentUser.Role.STUDENT, "{\"code\":\" \\n" + code + "\\t \"}")
                 .andExpect(status().isOk()).andExpect(jsonPath("$.project_id").value(project));
         assertEquals("MEMBER", jdbc.queryForObject("SELECT role FROM capstone.project_members WHERE project_id = ? AND user_id = ? AND removed_at IS NULL", String.class, project, outsider));
         accept(outsider, CurrentUser.Role.STUDENT, "{\"code\":\"" + code + "\"}")
@@ -137,6 +137,22 @@ class ProjectInviteTests {
         accept(removed, CurrentUser.Role.STUDENT, "{\"code\":\"" + code + "\"}")
                 .andExpect(status().isOk()).andExpect(jsonPath("$.project_id").value(project));
         assertEquals(1, jdbc.queryForObject("SELECT count(*) FROM capstone.project_members WHERE project_id = ? AND user_id = ? AND role = 'MEMBER' AND removed_at IS NULL AND joined_at > '2020-01-01T00:00:00Z'", Integer.class, project, removed));
+    }
+
+    @Test
+    void removalRevokesExistingCodeAndAllowsRejoinWithNewCode() throws Exception {
+        var leaderUser = new CurrentUser(leader, CurrentUser.Role.STUDENT);
+        String oldCode = projects.issueInvite(leaderUser, project).code();
+        projects.removeMember(leaderUser, project, member);
+
+        assertEquals(0, activeCount());
+        accept(member, CurrentUser.Role.STUDENT, "{\"code\":\"" + oldCode + "\"}")
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.error").value("invalid_invite"));
+        assertEquals(1, jdbc.queryForObject("SELECT count(*) FROM capstone.project_members WHERE project_id = ? AND user_id = ? AND removed_at IS NOT NULL", Integer.class, project, member));
+
+        String newCode = projects.issueInvite(leaderUser, project).code();
+        accept(member, CurrentUser.Role.STUDENT, "{\"code\":\"" + newCode + "\"}")
+                .andExpect(status().isOk()).andExpect(jsonPath("$.project_id").value(project));
     }
 
     @Test

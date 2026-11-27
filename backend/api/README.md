@@ -68,7 +68,7 @@ Spring Security는 `/api/health`, `/api/version`, GitHub 로그인 시작·콜�
 
 `GET /api/projects/{id}/members`는 참여 중인 팀원 목록을 반환하며 팀원, 교수, 운영자만 조회할 수 있다. 공개 프로젝트의 개요에는 팀원 기본 정보가 포함되지만, 학번이 포함된 팀원 목록은 다른 팀 학생에게 제공하지 않는다.
 
-팀장과 운영자는 `POST /api/projects/{id}/invites`로 초대 코드를 발급하고, `PATCH` 또는 `DELETE /api/projects/{id}/members/{user_id}`로 팀원의 역할을 바꾸거나 제외한다. 코드는 발급 응답에서만 확인할 수 있고 7일 동안 유효하다. 재발급하면 이전 코드는 무효가 된다. 가입을 완료한 학생은 `POST /api/invites/accept`에 코드를 보내 참여할 수 있다. 제외된 학생이 다시 참여하면 이전 참여 행을 복구한다.
+팀장과 운영자는 `POST /api/projects/{id}/invites`로 초대 코드를 발급하고, `PATCH` 또는 `DELETE /api/projects/{id}/members/{user_id}`로 팀원의 역할을 바꾸거나 제외한다. 코드는 발급 응답에서만 확인할 수 있고 7일 동안 유효하다. 재발급하거나 팀원을 제외하면 이전 코드는 무효가 된다. 가입을 완료한 학생은 `POST /api/invites/accept`에 코드를 보내 참여할 수 있다. 제외된 학생이 다시 참여하면 이전 참여 행을 복구한다.
 
 프로젝트에는 팀장이 한 명 이상 남아야 한다. 마지막 팀장의 역할을 바꾸거나 제외하려 하면 `409 last_leader`를 반환한다. 보관된 프로젝트는 팀원 관리나 초대 참여로 변경할 수 없다. 요청·응답과 오류 코드는 `docs/api-spec.md` 6장을 따른다.
 

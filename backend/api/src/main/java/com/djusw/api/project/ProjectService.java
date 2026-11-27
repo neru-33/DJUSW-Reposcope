@@ -188,6 +188,7 @@ class ProjectService {
         lockEditableProject(user, id);
         if ("LEADER".equals(activeMemberRole(id, userId))) ensureAnotherLeader(id);
         jdbc.update("UPDATE " + members + " SET removed_at = clock_timestamp() WHERE project_id = ? AND user_id = ?", id, userId);
+        jdbc.update("UPDATE " + invites + " SET revoked_at = clock_timestamp() WHERE project_id = ? AND revoked_at IS NULL", id);
         auditMemberOperator(user, "PROJECT_MEMBER_REMOVE", id, userId);
     }
 
