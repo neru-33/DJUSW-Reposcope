@@ -26,20 +26,31 @@ const operator: Me = {
  * 운영자 API 흉내. `stage`가 현재 세션 단계이고, 로그인 전은 null이다.
  * 요청 본문은 `bodies`에 경로별로 남긴다.
  */
-function operatorApi(start: { login?: OperatorStage; setup?: OperatorStage | null; afterPassword?: OperatorStage }) {
+function operatorApi(start: {
+  login?: OperatorStage
+  setup?: OperatorStage | null
+  afterPassword?: OperatorStage
+  signedIn?: Me
+}) {
   let stage: OperatorStage | null = start.setup ?? null
+  // 운영자 로그인 요청은 이전 로그인을 끝낸다.
+  let previous = start.signedIn ?? null
   const bodies: Record<string, unknown> = {}
   fetchMock.mockImplementation(async (input, init) => {
     const path = new URL(String(input), 'http://localhost').pathname
     if (init?.body) bodies[path] = JSON.parse(String(init.body))
     const code = (bodies[path] as { code?: string } | undefined)?.code
 
-    if (path === '/api/me') return stage === 'ACTIVE' ? json(operator) : json({ error: 'unauthorized' }, 401)
+    if (path === '/api/me') {
+      if (previous) return json(previous)
+      return stage === 'ACTIVE' ? json(operator) : json({ error: 'unauthorized' }, 401)
+    }
     if (path === '/auth/admin/login') {
       const { password } = bodies[path] as { password: string }
       if (password !== 'right') {
         return json({ error: 'invalid_credentials', message: 'ID 또는 비밀번호가 올바르지 않습니다.' }, 401)
       }
+      previous = null
       stage = start.login ?? 'OTP'
       return json({ stage, csrf_token: 'pending-token' })
     }
@@ -140,6 +151,23 @@ describe('V-13 운영자 로그인', () => {
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/admin/setup'))
     expect(await screen.findByRole('heading', { level: 1, name: '초기 설정' })).toBeTruthy()
+  })
+
+  it('다른 사용자로 로그인한 상태에서도 설정 단계 계정은 V-14로 보낸다', async () => {
+    const student: Me = {
+      user: { id: 2, github_id: 100, login: 'student', role: 'STUDENT', name: '홍길동' },
+      auth: 'github',
+      csrf_token: 'student-token',
+      consent_required: false,
+      profile_required: false,
+    }
+    operatorApi({ login: 'PASSWORD_CHANGE', signedIn: student })
+    const router = renderAt('/admin/login')
+
+    await signIn()
+
+    expect(await screen.findByRole('heading', { level: 1, name: '초기 설정' })).toBeTruthy()
+    expect(router.state.location.pathname).toBe('/admin/setup')
   })
 })
 

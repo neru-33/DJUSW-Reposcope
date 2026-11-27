@@ -11,7 +11,7 @@ type Step = 'password' | 'otp'
 
 /** V-13 운영자 로그인. ID와 비밀번호를 확인한 뒤 OTP를 받는다. 기준: docs/feature-spec.md R-2, docs/api-spec.md 4장 */
 export function OperatorLoginPage() {
-  const { reload } = useAuth()
+  const { state, reload } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const [searchParams] = useSearchParams()
@@ -43,6 +43,8 @@ export function OperatorLoginPage() {
         setStep('otp')
         setPassword('')
       } else {
+        // 이전 로그인은 서버에서 끝났다. 현재 사용자를 다시 읽어야 V-14가 설정 단계로 열린다.
+        if (state.me) await reload()
         navigate('/admin/setup', { replace: true })
       }
     } catch (error) {
