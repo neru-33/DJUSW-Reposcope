@@ -26,9 +26,11 @@ def shutdown(signum, frame):
 
 def backfill_loop(settings, github, stop):
     """과거 기록 가져오기는 별도 스레드에서 (큰 저장소를 읽는 동안에도 webhook 처리는 계속된다)."""
+    readme_attempts = {}  # repo_id -> README를 마지막으로 다시 요청한 시각 (재시작하면 비워진다)
     while not stop.is_set():
         try:
-            done = backfill.run_once(lambda: connect(settings), github, settings.backfill_days, budget_seconds=60)
+            done = backfill.run_once(lambda: connect(settings), github, settings.backfill_days, budget_seconds=60,
+                                     readme_attempts=readme_attempts)
         except Exception as error:
             emit('backfill_error', error_type=type(error).__name__)
             done = 0

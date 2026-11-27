@@ -1,6 +1,7 @@
 """저장소 README 가져오기 (기능 명세 S-2, S-3).
 
-저장소가 연결될 때(backfill.py)와 기본 브랜치에 push가 올 때(events.py) GitHub의 README API를 부른다.
+저장소가 연결될 때와 README가 없는 저장소의 재시도(backfill.py), 기본 브랜치에 push가 올 때(events.py)
+GitHub의 README API를 부른다.
 저장한 ETag로 조건부 요청을 보내 바뀌지 않았으면(304) 본문을 다시 받지 않는다.
 
 - 512KB 이하이고 NUL 문자가 없는 UTF-8 README만 저장한다.

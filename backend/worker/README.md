@@ -18,7 +18,7 @@ GitHub API → worker 과거 기록 스레드 → PostgreSQL (큐를 거치지 �
 | `message.py` | `backend/worker/message.py` | 메시지 `event` 값에 `pull_request_review` 추가. 원본 계약 `docs/contracts/sqs-message.schema.json`의 `event` 값에는 없다 |
 | `events.py` | `backend/worker/events.py` | `pull_request_review`를 활동 처리로 넘김, 기본 브랜치 push 뒤 README 다시 가져오기, 설치에서 빠진 저장소의 README 삭제와 과거 기록 작업 `SKIPPED` 처리 |
 | `activities.py` | `backend/worker/activities.py` | 리뷰 저장, `parent_ref`·`merged_at` 저장, 리뷰의 `dismissed`를 최종 상태로 처리, REST 리뷰 변환(`rest_review_row`) 추가 |
-| `backfill.py` | `backend/worker/backfill.py` | 리뷰(가장 최근 PR 500개)와 README 가져오기 추가, 저장소 전체 선택 설치는 README만 가져옴 |
+| `backfill.py` | `backend/worker/backfill.py` | 리뷰(가장 최근 PR 500개)와 README 가져오기·재시도 추가, 저장소 전체 선택 설치는 README만 가져옴, 작업 결과는 `PENDING`인 작업에만 기록 |
 | `tests/test_queue.py` | `backend/worker/tests/test_queue.py` | 없음 |
 | `tests/test_github.py` | `backend/worker/tests/test_github.py` | 조건부 요청 테스트 추가 |
 | `tests/fixtures/github/*.json` | `fixtures/github/*.json` | 없음. `pull_request_review.*.json`은 RepoScope에서 추가 |
@@ -28,7 +28,7 @@ GitHub API → worker 과거 기록 스레드 → PostgreSQL (큐를 거치지 �
 | `db.py` | `backend/worker/db.py` | 접속 `search_path`를 `INGEST_SCHEMA`로 지정, `ensure_schema` 추가(스키마가 없을 때만 생성) |
 | `github.py` | `backend/worker/github.py` | `User-Agent`를 `reposcope-worker`로 변경, ETag 조건부 요청(`conditional_get`) 추가 |
 | `tests/test_config.py` | `backend/worker/tests/test_config.py` | `INGEST_SCHEMA` 테스트 추가 |
-| `tests/test_database.py` | `backend/worker/tests/test_database.py` | 계약 비교에 V9, V10 포함(컬럼·제약·인덱스), 스키마 분리 테스트 추가, 리뷰·병합 시각 테스트 추가, 과거 기록 테스트에 리뷰·README·전체 선택·재추가 경우 추가, README 테스트 추가 |
+| `tests/test_database.py` | `backend/worker/tests/test_database.py` | 계약 비교에 V9, V10 포함(컬럼·제약·인덱스), 스키마 분리 테스트 추가, 리뷰·병합 시각 테스트 추가, 과거 기록 테스트에 리뷰·README·전체 선택·재추가·읽는 중 제거 경우 추가, README 테스트(재시도, 늦게 도착한 제거 이벤트 포함) 추가 |
 
 `readme.py`는 RepoScope에서 추가했다.
 
@@ -51,8 +51,10 @@ GitHub API → worker 과거 기록 스레드 → PostgreSQL (큐를 거치지 �
 - 커밋(기본 브랜치와 다른 브랜치 30개까지), PR, 리뷰, 이슈와 README를 가져와 이벤트 처리와 같은 `activities.upsert`로 저장한다. 큐를 거치지 않는다.
 - 목록 하나당 3,000건까지 읽고, 리뷰는 가장 최근 PR 500개까지만 읽는다. 상한에 걸리면 `DONE`이되 `last_error`가 `truncated`다.
 - `BACKFILL_DAYS`가 0보다 크면 그 기간의 활동만 가져온다. 포크한 저장소는 포크한 시점 이후 커밋만 가져온다.
-- 저장소 전체 선택(`all`)으로 설치한 경우 활동 기록은 가져오지 않고 README만 가져온다. 작업은 `SKIPPED`, `last_error`는 `all_repositories`이고, 설치가 `selected`로 바뀌면 다시 처리한다.
+- README는 활동을 저장하고 작업을 끝낸 뒤 가져온다. 가져오지 못하면 상태 코드와 저장소 ID만 로그(`readme_failed`)에 남기고 작업은 그대로 `DONE`이다. README는 아래 [README](#readme)의 재시도로 다시 가져온다.
+- 저장소 전체 선택(`all`)으로 설치한 경우 활동 기록은 가져오지 않고 README만 가져온다. README를 가져왔는지와 관계없이 작업은 `SKIPPED`, `last_error`는 `all_repositories`이고, 설치가 `selected`로 바뀌면 다시 처리한다.
 - 저장소가 설치에서 빠지면 작업을 `SKIPPED`(`not_linked`)로 바꾼다. 다시 추가되면 처음부터 다시 가져온다. upsert이므로 중복은 생기지 않는다.
+- 작업 결과(`DONE`, `FAILED`, 재시도 시각)는 `PENDING`인 작업에만 기록한다. 읽는 사이 저장소가 빠져 `SKIPPED`가 된 작업은 이어진 GitHub 요청이 실패해도 `FAILED`나 재시도로 바뀌지 않으므로, 다시 추가하면 바로 처리된다.
 - GitHub 요청이 실패하면 10분 × 시도 횟수 뒤에 다시 하고, 5번째 실패면 `FAILED`다. 저장소가 없으면(404, 410, 451) 바로 `FAILED`다. `FAILED`는 하루 뒤 다시 처리한다. 빈 저장소, 읽는 사이 지워진 브랜치, PR이나 이슈를 끈 저장소는 그 부분만 건너뛴다.
 
 ## README
@@ -60,6 +62,7 @@ GitHub API → worker 과거 기록 스레드 → PostgreSQL (큐를 거치지 �
 `readme.py`가 `GET /repos/{저장소}/readme`로 가져와 `repo_readmes`에 저장한다.
 
 - 저장소가 연결될 때(과거 기록 작업)와 기본 브랜치에 push가 올 때 가져온다. 브랜치 삭제 push는 제외한다.
+- 과거 기록 스레드는 반복할 때마다 설치가 `ACTIVE`인 `LINKED` 저장소 중 `repo_readmes`에 행이 없고 과거 기록 작업이 `PENDING`이 아닌 저장소의 README를 다시 가져온다. README가 원래 없는 저장소(`404`)에 계속 요청하지 않도록 저장소마다 마지막 시도 시각을 worker 메모리에 두고 1시간이 지난 저장소만 요청한다. 한 번 반복에 20개까지 요청한다. 시도 시각은 DB에 두지 않으므로 worker를 다시 시작하면 처음부터 센다. `BACKFILL=off`이면 재시도도 하지 않는다.
 - 저장한 ETag로 조건부 요청(`If-None-Match`)을 보낸다. `304`이면 본문은 그대로 두고 `fetched_at`만 바꾼다.
 - 512KB 이하이고 NUL 문자가 없는 UTF-8 README만 저장한다. README가 없거나(`404`), 512KB를 넘거나, UTF-8이 아니면 저장한 README를 지운다.
 - 저장소가 설치에서 빠지면(`installation_repositories.removed`, `installation.deleted`) 저장한 README를 지운다. 설치가 `suspend`되면 그대로 둔다.

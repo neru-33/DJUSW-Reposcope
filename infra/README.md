@@ -256,6 +256,8 @@ sudo DB_HOST=<RDS 주소> GITHUB_APP_ID=<앱 ID> GITHUB_CLIENT_ID=<Client ID> ./
 | 이미지 태그 | 필수. `latest`는 쓰지 않는다. api와 worker가 같은 태그를 쓰고 `APP_VERSION`(`/api/version`)도 이 값이다 |
 | `DB_HOST` | 필수. `terraform output db_address` 값 |
 | `GITHUB_APP_ID` | 선택. 비우면 worker의 GitHub 연동만 꺼진다 |
+| `BACKFILL` | 선택. 비우면 켜짐. `off`이면 worker가 과거 기록과 README 재시도를 하지 않는다 |
+| `BACKFILL_DAYS` | 선택. 비우면 전체 기록. 1~3650이면 그 기간(일)의 활동만 가져온다 |
 | `GITHUB_CLIENT_ID` | 필수. 학생 로그인에 사용할 GitHub App의 Client ID |
 | `NAME_PREFIX` | 선택. 기본 `reposcope`. DB 이름·사용자, SQS 큐, 원본 버킷, ECR 저장소, Parameter Store 경로를 만드는 데 쓴다 |
 | `DB_NAME`, `DB_USER`, `QUEUE_URL`, `RAW_BUCKET`, `AWS_REGION` | 선택. 비우면 `NAME_PREFIX`, 계정 ID, 인스턴스 리전에서 만든다 |

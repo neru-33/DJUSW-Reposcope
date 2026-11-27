@@ -8,10 +8,13 @@ GitHub API로 커밋(모든 브랜치), PR, 리뷰, 이슈와 README를 읽고 w
 - 기간: BACKFILL_DAYS (0 = 전체 기록, 기본). 목록 하나당 최대 MAX_PAGES쪽(100건씩)만 읽고,
   리뷰는 가장 최근 PR REVIEW_PR_LIMIT개까지만 읽는다.
 - 저장소 전체 선택(all)으로 설치한 경우는 활동 기록을 가져오지 않고 README만 가져온다 (SKIPPED, all_repositories).
+- README는 작업을 끝낸 뒤 가져온다. 실패하면 readme_failed 로그만 남기고 작업 결과(DONE, SKIPPED)는 그대로다.
+  README 행이 없는 LINKED 저장소는 retry_readmes가 저장소마다 1시간에 한 번 다시 가져온다.
 - 멱등: UNIQUE(repo_id, kind, ref) upsert. 실패하면 늦춰서 다시 하고, MAX_ATTEMPTS번째면 FAILED.
   FAILED도 하루 뒤 다시 대상이 된다. 저장소 자체가 없을 때(404 등)만 바로 FAILED이고,
   지워진 브랜치·PR을 끈 저장소·이슈를 끈 저장소는 그 부분만 건너뛴다.
 - 저장소가 설치에서 빠지면 작업을 SKIPPED(not_linked)로 바꾸고(events.py), 다시 LINKED가 되면 sweep이 처음부터 다시 한다.
+  작업 결과는 PENDING인 작업에만 쓰므로 읽는 사이 SKIPPED가 된 작업을 FAILED나 재시도로 덮어쓰지 않는다.
 - 포크한 저장소는 포크한 시점 이후 커밋만 가져온다 (원본 프로젝트의 기록이 팀 활동으로 들어오지 않게).
 - 상한(MAX_PAGES, REVIEW_PR_LIMIT)에 걸리면 DONE이되 last_error='truncated'로 남긴다 (오래된 쪽이 빠짐).
 """
@@ -33,6 +36,8 @@ MAX_ATTEMPTS = 5
 RETRY_DELAY = timedelta(minutes=10)
 LEASE = timedelta(minutes=15)   # 처리 중 워커가 멈추면 이 시간 뒤 다시 잡는다
 PERMANENT = (404, 410, 451)     # 저장소·설치가 없음: 다시 해도 같다
+README_RETRY_INTERVAL = timedelta(hours=1)   # README가 없는 저장소에 다시 요청하는 간격
+README_RETRY_LIMIT = 20                      # 한 번 반복에 README를 다시 요청하는 저장소 수
 
 
 def sweep(conn, days):
@@ -74,10 +79,12 @@ def claim(conn):
     return job
 
 
-def run_once(connection_factory, github, days, budget_seconds=15):
-    """기한이 된 작업을 budget_seconds 동안 처리한다 (작업 하나는 끝까지). 처리한 작업 수를 돌려준다."""
+def run_once(connection_factory, github, days, budget_seconds=15, readme_attempts=None):
+    """기한이 된 작업을 budget_seconds 동안 처리한다 (작업 하나는 끝까지). 처리한 작업 수를 돌려준다.
+    이어서 README가 없는 저장소의 README를 다시 가져온다 (readme_attempts는 반복 사이에 유지할 dict)."""
     if github is None:  # App 키가 없으면 GitHub API를 부를 수 없다
         return 0
+    attempts = {} if readme_attempts is None else readme_attempts
     deadline = time.monotonic() + budget_seconds
     count = 0
     with connection_factory() as conn:
@@ -87,7 +94,9 @@ def run_once(connection_factory, github, days, budget_seconds=15):
             if job is None:
                 break
             run_job(conn, github, job)
+            attempts[job[0]] = time.monotonic()  # 작업이 README를 방금 요청했다
             count += 1
+        retry_readmes(conn, github, attempts)
     return count
 
 
@@ -103,7 +112,6 @@ def run_job(conn, github, job):
     notes = {}
     try:
         rows = [] if selection == 'all' else fetch(github, installation_id, full_name, since, notes)
-        readme.refresh(conn, github, repo_id)
     except GitHubError as error:
         reason = f'http_{error.status}' if error.status else 'network'
         if error.status in PERMANENT:
@@ -118,6 +126,7 @@ def run_job(conn, github, job):
         # 전체 선택 설치는 관계없는 저장소의 기록까지 들어오지 않도록 README만 가져온다
         _finish(conn, repo_id, 'SKIPPED', error='all_repositories')
         emit('backfill_skipped', repo_id=repo_id, reason='all_repositories')
+        _refresh_readme(conn, github, repo_id)
         return 'SKIPPED'
 
     with conn.transaction():
@@ -133,7 +142,36 @@ def run_job(conn, github, job):
          commits=sum(row[0] == 'COMMIT' for row in rows), prs=sum(row[0] == 'PR' for row in rows),
          reviews=sum(row[0] == 'REVIEW' for row in rows), issues=sum(row[0] == 'ISSUE' for row in rows),
          seconds=round(time.monotonic() - started, 1))
+    _refresh_readme(conn, github, repo_id)
     return 'DONE'
+
+
+def _refresh_readme(conn, github, repo_id):
+    """README는 작업을 끝낸 뒤 가져온다. 실패해도 작업 결과는 바꾸지 않고 retry_readmes가 나중에 다시 한다."""
+    try:
+        readme.refresh(conn, github, repo_id)
+    except GitHubError as error:
+        emit('readme_failed', repo_id=repo_id, status=error.status)
+
+
+def retry_readmes(conn, github, attempts):
+    """README 행이 없는 LINKED 저장소의 README를 다시 가져온다. 처리를 기다리는 과거 기록 작업이 있는 저장소는
+    그 작업이 가져오므로 뺀다. README가 원래 없는 저장소(404)도 섞여 있으므로 attempts(repo_id -> 마지막 시도
+    시각, worker 메모리)로 README_RETRY_INTERVAL마다 한 번만, 한 번에 README_RETRY_LIMIT개까지 요청한다."""
+    now = time.monotonic()
+    rows = conn.execute('''
+        SELECT r.repo_id FROM repos r
+        JOIN installations i ON i.installation_id = r.installation_id
+        JOIN backfill_jobs j ON j.repo_id = r.repo_id
+        WHERE r.status = 'LINKED' AND i.status = 'ACTIVE' AND j.status <> 'PENDING'
+          AND NOT EXISTS (SELECT 1 FROM repo_readmes m WHERE m.repo_id = r.repo_id)
+        ORDER BY r.repo_id''').fetchall()
+    due = [rid for (rid,) in rows
+           if rid not in attempts or now - attempts[rid] >= README_RETRY_INTERVAL.total_seconds()]
+    for rid in due[:README_RETRY_LIMIT]:
+        attempts[rid] = now
+        _refresh_readme(conn, github, rid)
+    return min(len(due), README_RETRY_LIMIT)
 
 
 def fetch(github, installation_id, full_name, since, notes=None):
@@ -263,14 +301,15 @@ def _review_rows(github, token, repo, since, pulls, notes=None):
 
 
 def _finish(conn, repo_id, status, items=None, error=None):
+    # 읽는 사이 저장소가 빠져 SKIPPED가 된 작업(events.py)은 덮어쓰지 않는다
     conn.execute('''UPDATE backfill_jobs SET status = %s, items = %s, last_error = %s, finished_at = now()
-                    WHERE repo_id = %s''', (status, items, error, repo_id))
+                    WHERE repo_id = %s AND status = 'PENDING' ''', (status, items, error, repo_id))
 
 
 def _retry(conn, repo_id, attempt, reason):
     if attempt >= MAX_ATTEMPTS:
         _finish(conn, repo_id, 'FAILED', error=reason)
         return 'FAILED'
-    conn.execute('UPDATE backfill_jobs SET next_attempt_at = now() + %s, last_error = %s WHERE repo_id = %s',
-                 (RETRY_DELAY * attempt, reason, repo_id))
+    conn.execute('''UPDATE backfill_jobs SET next_attempt_at = now() + %s, last_error = %s
+                    WHERE repo_id = %s AND status = 'PENDING' ''', (RETRY_DELAY * attempt, reason, repo_id))
     return 'RETRY'

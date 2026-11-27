@@ -27,6 +27,9 @@ services:
       # 비우면 GitHub 연동만 꺼지고 payload에 들어 있는 저장소만 저장한다.
       GITHUB_APP_ID: ${GITHUB_APP_ID:-}
       GITHUB_APP_PRIVATE_KEY_FILE: /run/secrets/github-app-key
+      # 비우면 worker 기본값(과거 기록 켜짐, 전체 기록). 끌 때는 BACKFILL=off로 배포한다.
+      BACKFILL: ${BACKFILL:-}
+      BACKFILL_DAYS: ${BACKFILL_DAYS:-}
       APP_VERSION: ${APP_VERSION:?APP_VERSION에 이미지 태그와 같은 값을 설정한다}
     volumes:
       # 키 파일은 deploy.sh가 Parameter Store에서 읽어 만든다. 파일이 없을 때 폴더를 만들어 버리지 않도록 create_host_path를 끈다.

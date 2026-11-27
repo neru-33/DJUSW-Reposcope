@@ -50,11 +50,11 @@ def fixture(name):
     return json.loads((HERE / 'fixtures' / 'github' / (name + '.json')).read_text(encoding='utf-8'))
 
 
-def send(processor, name, delivery=None, payload=None, event=None):
+def send(processor, name, delivery=None, payload=None, event=None, received_at='2026-11-03T12:00:00Z'):
     message = Message.parse({'schema_version': 1, 'source': 'webhook',
                              'delivery_id': delivery or str(uuid.uuid4()),
                              'event': event or name.split('.')[0],
-                             's3_key': '2026-11-03/test.json', 'received_at': '2026-11-03T12:00:00Z'})
+                             's3_key': '2026-11-03/test.json', 'received_at': received_at})
     return processor.process(message, payload if payload is not None else fixture(name))
 
 
@@ -563,7 +563,8 @@ def full_history_routes():
 def test_backfill_imports_full_history_once_without_emails_or_bodies(database):
     send(EventProcessor(database), 'installation.created')
     github = FakeGitHub(full_history_routes())
-    assert backfill.run_once(database, github, days=0, budget_seconds=30) == 2
+    attempts = {}
+    assert backfill.run_once(database, github, days=0, budget_seconds=30, readme_attempts=attempts) == 2
     with database() as conn:
         rows = conn.execute('''SELECT kind, ref, parent_ref, actor_github_id, actor_login, title, state, merged_at
                                FROM activities WHERE repo_id = 30000001 ORDER BY kind, ref''').fetchall()
@@ -586,7 +587,7 @@ def test_backfill_imports_full_history_once_without_emails_or_bodies(database):
     assert sum('sha=main' in call for call in github.calls) == 1
 
     calls = len(github.calls)
-    assert backfill.run_once(database, github, days=0, budget_seconds=30) == 0
+    assert backfill.run_once(database, github, days=0, budget_seconds=30, readme_attempts=attempts) == 0
     assert len(github.calls) == calls
 
 
@@ -655,17 +656,69 @@ def test_backfill_retries_then_fails_and_missing_repo_fails_at_once(database):
     assert jobs(database)[30000001] == ('FAILED', None, 'http_404', 1)
 
 
-def test_readme_failure_retries_the_backfill_without_saving(database):
+def test_readme_failure_keeps_the_backfill_and_is_retried_later(database, capsys):
     send(EventProcessor(database), 'installation.created')
     routes = full_history_routes()
     routes[f'{REPO}/readme'] = lambda sent: GitHubError(status=503)
-    backfill.run_once(database, FakeGitHub(routes), days=0, budget_seconds=30)
-    assert jobs(database)[30000001] == ('PENDING', None, 'http_503', 1)
+    github = FakeGitHub(routes)
+    attempts = {}
+    backfill.run_once(database, github, days=0, budget_seconds=30, readme_attempts=attempts)
+    assert jobs(database)[30000001] == ('DONE', 9, None, 1)
     with database() as conn:
-        assert conn.execute('SELECT count(*) FROM activities WHERE repo_id = 30000001').fetchone() == (0,)
-    make_due(database)
-    backfill.run_once(database, FakeGitHub(full_history_routes()), days=0, budget_seconds=30)
-    assert jobs(database)[30000001] == ('DONE', 9, None, 2)
+        assert conn.execute('SELECT count(*) FROM activities WHERE repo_id = 30000001').fetchone() == (9,)
+    assert readmes(database) == {}
+    failed = [json.loads(line) for line in capsys.readouterr().out.splitlines() if '"readme_failed"' in line]
+    assert failed and all(set(entry) == {'at', 'event', 'repo_id', 'status'} for entry in failed)
+    assert [entry['repo_id'] for entry in failed] == [30000001]         # 같은 반복에서 다시 요청하지 않는다
+    assert failed[0]['status'] == 503
+
+    # 1시간 안에는 다시 요청하지 않는다
+    github.routes[f'{REPO}/readme'] = gh_readme('# Team project\n')
+    calls = len(github.calls)
+    backfill.run_once(database, github, days=0, budget_seconds=30, readme_attempts=attempts)
+    assert len(github.calls) == calls and readmes(database) == {}
+
+    # 1시간이 지나면 README 행이 없는 저장소(README가 원래 없는 비공개 저장소 포함)를 다시 요청한다
+    for rid in attempts:
+        attempts[rid] -= backfill.README_RETRY_INTERVAL.total_seconds()
+    backfill.run_once(database, github, days=0, budget_seconds=30, readme_attempts=attempts)
+    assert github.calls[calls:] == [f'{REPO}/readme', f'{PRIVATE_REPO}/readme']
+    assert readmes(database)[30000001][1] == '# Team project\n'
+    assert jobs(database)[30000001] == ('DONE', 9, None, 1)
+
+
+def test_readme_failure_on_all_repository_installs_still_skips(database):
+    payload = fixture('installation.created')
+    payload['installation']['repository_selection'] = 'all'
+    github_app = Mock()
+    github_app.repositories.return_value = payload['repositories']
+    send(EventProcessor(database, github_app), 'installation.created', payload=payload)
+    routes = full_history_routes()
+    routes[f'{REPO}/readme'] = lambda sent: GitHubError(status=502)
+    backfill.run_once(database, FakeGitHub(routes), days=0, budget_seconds=30)
+    assert jobs(database) == {30000001: ('SKIPPED', None, 'all_repositories', 1),
+                              30000002: ('SKIPPED', None, 'all_repositories', 1)}
+
+
+def test_readme_retry_waits_for_pending_jobs_and_is_capped(database, monkeypatch):
+    send(EventProcessor(database), 'installation.created')
+    github = FakeGitHub({})                                         # README 없음(404)
+    with database() as conn:
+        backfill.sweep(conn, 0)
+        assert backfill.retry_readmes(conn, github, {}) == 0         # 과거 기록 작업이 가져온다
+    assert github.calls == []
+    backfill.run_once(database, github, days=0, budget_seconds=30)
+    monkeypatch.setattr(backfill, 'README_RETRY_LIMIT', 1)
+    attempts = {}
+    with database() as conn:
+        assert backfill.retry_readmes(conn, github, attempts) == 1
+        assert list(attempts) == [30000001]
+        assert backfill.retry_readmes(conn, github, attempts) == 1
+        assert list(attempts) == [30000001, 30000002]
+        assert backfill.retry_readmes(conn, github, attempts) == 0
+        conn.execute("UPDATE installations SET status = 'SUSPENDED'")
+        attempts.clear()
+        assert backfill.retry_readmes(conn, github, attempts) == 0  # 정지된 설치는 요청하지 않는다
 
 
 def test_backfill_uses_the_webhook_upsert_rules(database):
@@ -796,6 +849,52 @@ def test_removed_then_re_added_repo_is_backfilled_again(database):
     assert readmes(database)[30000002][1] == '# Private\n'
     with database() as conn:
         assert conn.execute('SELECT ref FROM activities WHERE repo_id = 30000002').fetchall() == [('gap',)]
+
+
+def re_add_private_repo(processor, received_at='2026-11-03T13:00:00Z'):
+    added = fixture('installation_repositories.added')
+    added['repositories_added'] = fixture('installation_repositories.removed')['repositories_removed']
+    send(processor, 'installation_repositories', payload=added, received_at=received_at)
+
+
+@pytest.mark.parametrize('status', [404, 502])   # 404는 바로 FAILED, 502는 재시도로 가는 경로
+def test_repo_removed_while_reading_stays_skipped(database, status):
+    processor = EventProcessor(database)
+    send(processor, 'installation.created')
+    routes = full_history_routes()
+
+    def commits(params):
+        send(processor, 'installation_repositories.removed')        # 읽는 사이 30000002가 설치에서 빠짐
+        return GitHubError(status=status)
+
+    routes[f'{PRIVATE_REPO}/commits'] = commits
+    backfill.run_once(database, FakeGitHub(routes), days=0, budget_seconds=30)
+    assert jobs(database)[30000002] == ('SKIPPED', None, 'not_linked', 1)
+
+    # 다시 추가하면 하루를 기다리지 않고 바로 가져온다
+    re_add_private_repo(processor)
+    assert backfill.run_once(database, FakeGitHub(full_history_routes()), days=0, budget_seconds=30) == 1
+    assert jobs(database)[30000002] == ('DONE', 0, None, 1)
+
+
+def test_late_removed_event_keeps_readme_and_job_of_a_re_added_repo(database):
+    processor = EventProcessor(database)
+    send(processor, 'installation.created')
+    github = FakeGitHub(full_history_routes())
+    github.routes[f'{PRIVATE_REPO}/readme'] = gh_readme('# Private\n')
+    removed = fixture('installation_repositories.removed')
+    send(processor, 'installation_repositories', 'removed-1', payload=removed, received_at='2026-11-03T12:10:00Z')
+    re_add_private_repo(processor, received_at='2026-11-03T13:00:00Z')
+    backfill.run_once(database, github, days=0, budget_seconds=30)
+    assert jobs(database)[30000002] == ('DONE', 0, None, 1) and 30000002 in readmes(database)
+
+    # 13:00에 다시 추가한 뒤, 12:30에 받은 제거 이벤트가 늦게 처리된다
+    assert send(processor, 'installation_repositories', 'removed-2', payload=removed,
+                received_at='2026-11-03T12:30:00Z') == 'PROCESSED'
+    assert jobs(database)[30000002] == ('DONE', 0, None, 1)
+    assert readmes(database)[30000002][1] == '# Private\n'
+    with database() as conn:
+        assert conn.execute('SELECT status FROM repos WHERE repo_id = 30000002').fetchone() == ('LINKED',)
 
 
 # ---------------------------------------------------------------- README
