@@ -34,10 +34,12 @@ class DeliverableService {
     }
 
     @Transactional(readOnly = true)
-    public Items list(CurrentUser user, long projectId) {
-        access(user, projectId, false);
-        return new Items(jdbc.query(select() + " WHERE d.project_id = ? ORDER BY d.created_at, d.id",
-                (rs, row) -> item(rs), projectId));
+    public Items list(CurrentUser user, long projectId, int page, int size) {
+        Access access = access(user, projectId, false);
+        if (page < 1 || size < 1 || size > 50) throw invalid();
+        long total = jdbc.queryForObject("SELECT count(*) FROM " + deliverables + " WHERE project_id = ?", Long.class, projectId);
+        return new Items(jdbc.query(select() + " WHERE d.project_id = ? ORDER BY d.created_at, d.id LIMIT ? OFFSET ?",
+                (rs, row) -> item(rs, user, access), projectId, size, (long) (page - 1) * size), page, size, total);
     }
 
     @Transactional
@@ -50,26 +52,26 @@ class DeliverableService {
                         + " (project_id, kind, title, url, created_by) VALUES (?, ?, ?, ?, ?) RETURNING id",
                 Long.class, projectId, input.kind(), input.title(), input.url(), user.id());
         audit(user, "DELIVERABLE_CREATE", id);
-        return find(projectId, id);
+        return find(projectId, id, user, access);
     }
 
     @Transactional
     public Item update(CurrentUser user, long projectId, long id, Map<String, JsonNode> fields) {
         Access access = access(user, projectId, true);
-        Item current = find(projectId, id);
+        Item current = find(projectId, id, user, access);
         authorizeChange(user, access, current);
         checkArchived(access);
         DeliverableInput input = input(fields, current);
         jdbc.update("UPDATE " + deliverables + " SET kind = ?, title = ?, url = ?, updated_at = now()"
                 + " WHERE project_id = ? AND id = ?", input.kind(), input.title(), input.url(), projectId, id);
         audit(user, "DELIVERABLE_UPDATE", id);
-        return find(projectId, id);
+        return find(projectId, id, user, access);
     }
 
     @Transactional
     public void delete(CurrentUser user, long projectId, long id) {
         Access access = access(user, projectId, true);
-        Item current = find(projectId, id);
+        Item current = find(projectId, id, user, access);
         authorizeChange(user, access, current);
         checkArchived(access);
         jdbc.update("DELETE FROM " + deliverables + " WHERE project_id = ? AND id = ?", projectId, id);
@@ -93,16 +95,20 @@ class DeliverableService {
     }
 
     private void authorizeChange(CurrentUser user, Access access, Item item) {
-        if (!access.staff() && !(access.memberRole() != null
-                && ("LEADER".equals(access.memberRole()) || item.created_by() == user.id()))) throw forbidden();
+        if (!canChange(user, access, item.created_by())) throw forbidden();
+    }
+
+    private static boolean canChange(CurrentUser user, Access access, long createdBy) {
+        return access.staff() || (access.memberRole() != null
+                && ("LEADER".equals(access.memberRole()) || createdBy == user.id()));
     }
 
     private static void checkArchived(Access access) {
         if (access.archived()) throw new ApiException(HttpStatus.CONFLICT, "project_archived", "보관한 프로젝트는 수정할 수 없습니다.");
     }
 
-    private Item find(long projectId, long id) {
-        var items = jdbc.query(select() + " WHERE d.project_id = ? AND d.id = ?", (rs, row) -> item(rs), projectId, id);
+    private Item find(long projectId, long id, CurrentUser user, Access access) {
+        var items = jdbc.query(select() + " WHERE d.project_id = ? AND d.id = ?", (rs, row) -> item(rs, user, access), projectId, id);
         if (items.isEmpty()) throw notFound("결과물을 찾을 수 없습니다.");
         return items.getFirst();
     }
@@ -112,9 +118,11 @@ class DeliverableService {
                 + " FROM " + deliverables + " d LEFT JOIN " + accounts + " u ON u.id = d.created_by";
     }
 
-    private static Item item(java.sql.ResultSet rs) throws java.sql.SQLException {
+    private static Item item(java.sql.ResultSet rs, CurrentUser user, Access access) throws java.sql.SQLException {
+        long createdBy = rs.getLong("created_by");
         return new Item(rs.getLong("id"), rs.getString("kind"), rs.getString("title"), rs.getString("url"),
-                rs.getLong("created_by"), rs.getString("created_by_name"), rs.getTimestamp("created_at").toInstant());
+                createdBy, rs.getString("created_by_name"), rs.getTimestamp("created_at").toInstant(),
+                !access.archived() && canChange(user, access, createdBy));
     }
 
     private static DeliverableInput input(Map<String, JsonNode> fields, Item current) {
@@ -145,6 +153,6 @@ class DeliverableService {
 
     record Access(boolean staff, String memberRole, boolean archived) {}
     record Item(long id, String kind, String title, String url, @com.fasterxml.jackson.annotation.JsonIgnore long created_by,
-                String created_by_name, Instant created_at) {}
-    record Items(List<Item> items) {}
+                String created_by_name, Instant created_at, boolean can_edit) {}
+    record Items(List<Item> items, int page, int size, long total) {}
 }

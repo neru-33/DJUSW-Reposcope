@@ -18,8 +18,9 @@ class DeliverableController {
     }
 
     @GetMapping
-    DeliverableService.Items list(@PathVariable long projectId) {
-        return deliverables.list(users.requireCompletedProfile(), projectId);
+    DeliverableService.Items list(@PathVariable long projectId, @RequestParam(defaultValue = "1") int page,
+                                  @RequestParam(defaultValue = "50") int size) {
+        return deliverables.list(users.requireCompletedProfile(), projectId, page, size);
     }
 
     @PostMapping

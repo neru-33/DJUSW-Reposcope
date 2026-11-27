@@ -53,7 +53,8 @@ class DeliverableApiTests {
                 .andExpect(jsonPath("$.kind").value("SLIDES")).andExpect(jsonPath("$.created_by_name").value("학생"))
                 .andExpect(jsonPath("$.id").isNumber()).andExpect(jsonPath("$.title").value("발표자료"))
                 .andExpect(jsonPath("$.url").value("https://example.com/slides"))
-                .andExpect(jsonPath("$.created_at").isString()).andExpect(jsonPath("$.created_by").doesNotExist());
+                .andExpect(jsonPath("$.created_at").isString()).andExpect(jsonPath("$.created_by").doesNotExist())
+                .andExpect(jsonPath("$.can_edit").value(true));
         long id = jdbc.queryForObject("SELECT id FROM capstone.deliverables WHERE project_id = ?", Long.class, project);
         assertEquals(author, jdbc.queryForObject("SELECT created_by FROM capstone.deliverables WHERE id = ?", Long.class, id));
         call(get(path(project)), member, CurrentUser.Role.STUDENT, null).andExpect(status().isOk())
@@ -61,11 +62,41 @@ class DeliverableApiTests {
                 .andExpect(jsonPath("$.items[0].title").value("발표자료"))
                 .andExpect(jsonPath("$.items[0].url").value("https://example.com/slides"))
                 .andExpect(jsonPath("$.items[0].created_by_name").value("학생"))
-                .andExpect(jsonPath("$.items[0].created_at").isString());
+                .andExpect(jsonPath("$.items[0].created_at").isString())
+                .andExpect(jsonPath("$.items[0].can_edit").value(false))
+                .andExpect(jsonPath("$.page").value(1)).andExpect(jsonPath("$.size").value(50))
+                .andExpect(jsonPath("$.total").value(1));
         call(patch(path(project) + "/" + id), author, CurrentUser.Role.STUDENT, "{\"title\":\"새 제목\"}")
-                .andExpect(status().isOk()).andExpect(jsonPath("$.title").value("새 제목"));
+                .andExpect(status().isOk()).andExpect(jsonPath("$.title").value("새 제목"))
+                .andExpect(jsonPath("$.can_edit").value(true));
         call(delete(path(project) + "/" + id), author, CurrentUser.Role.STUDENT, null).andExpect(status().isNoContent());
         assertEquals(0, jdbc.queryForObject("SELECT count(*) FROM capstone.deliverables WHERE id = ?", Integer.class, id));
+    }
+
+    @Test
+    void listReportsPermissionsAndPaginates() throws Exception {
+        long first = createRow();
+        long second = createRow();
+        call(get(path(project)).param("page", "1").param("size", "1"), author, CurrentUser.Role.STUDENT, null)
+                .andExpect(status().isOk()).andExpect(jsonPath("$.items.length()").value(1))
+                .andExpect(jsonPath("$.items[0].id").value(first)).andExpect(jsonPath("$.items[0].can_edit").value(true))
+                .andExpect(jsonPath("$.page").value(1)).andExpect(jsonPath("$.size").value(1)).andExpect(jsonPath("$.total").value(2));
+        call(get(path(project)).param("page", "2").param("size", "1"), leader, CurrentUser.Role.STUDENT, null)
+                .andExpect(status().isOk()).andExpect(jsonPath("$.items[0].id").value(second))
+                .andExpect(jsonPath("$.items[0].can_edit").value(true));
+        call(get(path(project)), operator, CurrentUser.Role.ADMIN, null)
+                .andExpect(status().isOk()).andExpect(jsonPath("$.items[0].can_edit").value(true));
+        call(get(path(project)), outsider, CurrentUser.Role.PROFESSOR, null)
+                .andExpect(status().isOk()).andExpect(jsonPath("$.items[0].can_edit").value(false));
+        for (String[] params : List.of(new String[]{"0", "1"}, new String[]{"1", "0"}, new String[]{"1", "51"}))
+            call(get(path(project)).param("page", params[0]).param("size", params[1]), author, CurrentUser.Role.STUDENT, null)
+                    .andExpect(status().isBadRequest());
+        jdbc.update("UPDATE capstone.projects SET archived_at = now() WHERE id = ?", project);
+        for (long user : List.of(author, leader))
+            call(get(path(project)), user, CurrentUser.Role.STUDENT, null)
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.items[0].can_edit").value(false));
+        call(get(path(project)), operator, CurrentUser.Role.ADMIN, null)
+                .andExpect(status().isOk()).andExpect(jsonPath("$.items[0].can_edit").value(false));
     }
 
     @Test
