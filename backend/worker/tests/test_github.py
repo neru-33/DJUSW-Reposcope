@@ -86,3 +86,35 @@ def test_connection_dropped_mid_response_is_a_github_error(key):
     with pytest.raises(GitHubError) as error:
         app(key, opener).get('/repos/o/r/commits', 'token')
     assert error.value.status is None
+
+
+class Response(io.BytesIO):
+    def __init__(self, body, headers):
+        super().__init__(json.dumps(body).encode())
+        self.headers = headers
+
+
+def test_conditional_get_sends_etag_and_reads_new_one(key):
+    opener = Mock(return_value=Response({'path': 'README.md'}, {'ETag': '"v2"'}))
+    assert app(key, opener).conditional_get('/repos/o/r/readme', 'token', '"v1"') == (
+        200, '"v2"', {'path': 'README.md'})
+    request = opener.call_args.args[0]
+    assert request.get_header('If-none-match') == '"v1"'
+
+
+def test_conditional_get_without_etag_sends_no_condition(key):
+    opener = Mock(return_value=Response({'path': 'README.md'}, {'ETag': '"v1"'}))
+    assert app(key, opener).conditional_get('/repos/o/r/readme', 'token')[:2] == (200, '"v1"')
+    assert opener.call_args.args[0].get_header('If-none-match') is None
+
+
+def test_not_modified_is_a_result_not_an_error(key):
+    opener = Mock(side_effect=HTTPError('https://api.github.com', 304, 'Not Modified', {'ETag': '"v1"'}, None))
+    assert app(key, opener).conditional_get('/repos/o/r/readme', 'token', '"v1"') == (304, '"v1"', None)
+
+
+def test_conditional_get_keeps_only_the_status_of_errors(key):
+    opener = Mock(side_effect=HTTPError('https://api.github.com', 404, 'private user@example.com', {}, None))
+    with pytest.raises(GitHubError, match='^GitHub request failed$') as error:
+        app(key, opener).conditional_get('/repos/o/r/readme', 'token', '"v1"')
+    assert error.value.status == 404

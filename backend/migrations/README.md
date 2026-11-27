@@ -25,6 +25,7 @@ V9부터는 RepoScope에서 추가한 파일이다.
 | `V7__operators.sql` | 직위 5단계, `operator_credentials`, `operator_sessions`, `login_attempts` |
 | `V8__operator_expiry.sql` | `operator_credentials.expires_at` |
 | `V9__reposcope_additions.sql` | `activities`의 `REVIEW`, `parent_ref`, `merged_at`, `(repo_id, actor_github_id)` 인덱스, `users.disabled_at`, 학번 형식 CHECK |
+| `V10__repo_readmes.sql` | `repo_readmes` |
 
 ## 사용하지 않는 테이블과 컬럼
 

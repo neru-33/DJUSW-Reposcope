@@ -61,3 +61,22 @@ def test_ingest_schema_cannot_be_the_capstone_schema(required, capstone, ingest)
     required.setenv('INGEST_SCHEMA', ingest)
     with pytest.raises(ValueError, match='CAPSTONE_SCHEMA'):
         Settings.from_env()
+
+
+@pytest.mark.parametrize('value, expected', [(None, 0), ('', 0), ('90', 90), ('0', 0), ('abc', 0), ('99999', 0)])
+def test_backfill_days_defaults_to_full_history(required, value, expected):
+    if value is None:
+        required.delenv('BACKFILL_DAYS', raising=False)
+    else:
+        required.setenv('BACKFILL_DAYS', value)
+    assert Settings.from_env().backfill_days == expected
+
+
+@pytest.mark.parametrize('value, enabled', [(None, True), ('on', True), ('off', False), ('OFF', False),
+                                            ('0', False), ('false', False)])
+def test_backfill_can_be_switched_off(required, value, enabled):
+    if value is None:
+        required.delenv('BACKFILL', raising=False)
+    else:
+        required.setenv('BACKFILL', value)
+    assert Settings.from_env().backfill_enabled is enabled

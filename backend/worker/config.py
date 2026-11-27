@@ -26,6 +26,8 @@ class Settings:
     app_id: str
     app_key_file: str
     schema: str = 'public'
+    backfill_days: int = 0  # 과거 기록 기간(일). 0 = 전체 기록
+    backfill_enabled: bool = True  # BACKFILL=off 이면 과거 기록을 가져오지 않는다
 
     @classmethod
     def from_env(cls):
@@ -37,10 +39,13 @@ class Settings:
         db = {key: os.environ[name] for key, name in (
             ('host', 'DB_HOST'), ('port', 'DB_PORT'), ('dbname', 'DB_NAME'),
             ('user', 'DB_USER'), ('password', 'DB_PASSWORD'), ('sslmode', 'DB_SSLMODE'))}
+        days = os.environ.get('BACKFILL_DAYS', '').strip()
         return cls(db, os.environ['QUEUE_URL'], os.environ['RAW_BUCKET'], os.environ['AWS_REGION'],
                    os.environ.get('GITHUB_APP_ID', ''),
                    os.environ.get('GITHUB_APP_PRIVATE_KEY_FILE', '/run/secrets/github-app-key'),
-                   schema=ingest_schema())
+                   schema=ingest_schema(),
+                   backfill_days=int(days) if days.isdigit() and int(days) <= 3650 else 0,
+                   backfill_enabled=os.environ.get('BACKFILL', '').strip().lower() not in ('off', '0', 'false'))
 
 
 MIGRATIONS = Path(__file__).resolve().parents[1] / 'migrations'

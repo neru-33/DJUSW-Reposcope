@@ -6,6 +6,7 @@ import boto3
 import psycopg
 from botocore.config import Config
 
+from . import backfill
 from .config import Settings
 from .db import connect, ensure_schema, migrate
 from .events import EventProcessor
@@ -23,10 +24,24 @@ def shutdown(signum, frame):
     raise ShutdownRequested()
 
 
+def backfill_loop(settings, github, stop):
+    """과거 기록 가져오기는 별도 스레드에서 (큰 저장소를 읽는 동안에도 webhook 처리는 계속된다)."""
+    readme_attempts = {}  # repo_id -> README를 마지막으로 다시 요청한 시각 (재시작하면 비워진다)
+    while not stop.is_set():
+        try:
+            done = backfill.run_once(lambda: connect(settings), github, settings.backfill_days, budget_seconds=60,
+                                     readme_attempts=readme_attempts)
+        except Exception as error:
+            emit('backfill_error', error_type=type(error).__name__)
+            done = 0
+        stop.wait(5 if done else 20)
+
+
 def main():
     signal.signal(signal.SIGTERM, shutdown)
     signal.signal(signal.SIGINT, shutdown)
     retry = threading.Event()
+    stop = threading.Event()
     try:
         settings = Settings.from_env()
         while True:
@@ -44,7 +59,11 @@ def main():
         worker = Worker(session.client('sqs', config=config), session.client('s3', config=config),
                         settings.queue_url, settings.raw_bucket,
                         EventProcessor(lambda: connect(settings), github))
-        emit('worker_started', version=os.environ.get('APP_VERSION', 'unknown'), schema=settings.schema)
+        backfill_on = github is not None and settings.backfill_enabled
+        emit('worker_started', version=os.environ.get('APP_VERSION', 'unknown'), schema=settings.schema,
+             backfill=(settings.backfill_days or 'all') if backfill_on else 'disabled')
+        if backfill_on:
+            threading.Thread(target=backfill_loop, args=(settings, github, stop), daemon=True).start()
         while True:
             try:
                 worker.poll()
@@ -52,6 +71,7 @@ def main():
                 emit('poll_failed', error_type=type(error).__name__)
                 retry.wait(3)
     except ShutdownRequested:
+        stop.set()
         emit('worker_stopped')
     except Exception as error:
         emit('startup_failed', error_type=type(error).__name__)
